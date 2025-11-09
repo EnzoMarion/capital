@@ -10,10 +10,13 @@ export type Country = {
     status: string;
 };
 
-export async function fetchCountries(): Promise<Country[]> {
-    const { data, error } = await supabase.from("countries").select("*");
-    console.log("data", data, "error", error);
+export async function fetchCountries(continent?: string) {
+    let query = supabase.from("countries").select("*");
+    if (continent) {
+        query = query.eq("continent", continent);
+    }
+    const { data, error } = await query;
     if (error) throw error;
-    return (data as Country[]) || [];
+    return data || [];
 }
 

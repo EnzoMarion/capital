@@ -3,7 +3,6 @@ import { fetchCountries } from "../api/countries";
 import type { Country } from "../api/countries";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// Mélange Fisher-Yates sur une copie
 function shuffle(array: Country[]) {
     const arr = array.slice();
     for (let i = arr.length - 1; i > 0; i--) {
@@ -12,7 +11,7 @@ function shuffle(array: Country[]) {
     }
     return arr;
 }
-// Récupère le query param ?continent=
+
 function useQuery() {
     return new URLSearchParams(useLocation().search);
 }
@@ -28,6 +27,7 @@ export default function Quiz() {
 
     useEffect(() => {
         const continent = query.get("continent");
+        console.log("Continent choisi:", continent);
         fetchCountries(continent || undefined)
             .then(data => {
                 const filtered = data.filter(c => !!c.capital && !!c.name);
@@ -37,6 +37,7 @@ export default function Quiz() {
                 console.error(e);
                 setCountries([]);
             });
+        // eslint-disable-next-line
     }, [window.location.search]);
 
     function handleSubmit(e: React.FormEvent) {
@@ -67,9 +68,7 @@ export default function Quiz() {
             <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={() => {
                 setFinished(false); setCurrent(0); setScore(0); setUserAnswer("");
             }}>Recommencer</button>
-            <button className="mt-4 px-4 py-2 bg-gray-300 text-black rounded" onClick={() => navigate("/modes")}>
-                Choisir un autre continent
-            </button>
+            <button className="mt-4 px-4 py-2 bg-gray-300 text-black rounded" onClick={() => navigate("/modes")}>Changer de continent</button>
             <a href="/" className="mt-2 px-4 py-2 bg-gray-200 text-black rounded">Accueil</a>
         </div>
     );
