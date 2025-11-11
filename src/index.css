@@ -1,68 +1,118 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
+body, html {
   margin: 0;
-  display: flex;
-  place-items: center;
+  padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #242424 60%, #646cff 100%);
+  overflow-x: auto;
+  color: #fff;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.quiz-stack-layout {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  min-height: 100vh;
+  width: 100vw;
+}
+
+.carte-zone {
+  width: 100vw;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-top: 16px;
+}
+
+.carte-fullscreen-stack {
+  background: none;
+  width: 100%;
+  min-height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.carte-fullscreen-stack .rsm-geography {
+  stroke: #444;
+  stroke-width: 0.8;
+}
+
+.carte-fullscreen-stack .rsm-geography[fill="#ff7300"] {
+  filter: drop-shadow(0 0 8px #ff7300cc);
+  stroke: #ff7300;
+  stroke-width: 1.2;
+}
+
+.quiz-panel-content {
+  margin-top: 2em;
+  background: #202849f2;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px #232a3440;
+  padding: 2em 2em 1.5em;
+  max-width: 600px;
+  width: 92vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button, input[type="text"] {
+  border-radius: 8px;
+  border: none;
+  font-size: 1.08em;
+  font-weight: 500;
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+  padding: 0.7em 1.6em;
+  margin: 0 0.2em;
+  background: var(#646cff);
+  color: white;
+  box-shadow: 0 2px 12px #232a3440;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: background 0.15s, box-shadow 0.22s, transform 0.09s;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:hover, button:focus-visible {
+  background: #474aff;
+  transform: translateY(-2px) scale(1.03);
 }
+
+input[type="text"] {
+  background: #232a34;
+  color: #fff;
+  padding: 0.7em 1em;
+  margin-right: 0.5em;
+  border: 1.5px solid #363840;
+  transition: border-color 0.22s, box-shadow 0.14s;
+}
+
+input[type="text"]:focus {
+  border-color: #646cff;
+  box-shadow: 0 2px 9px #646cff33;
+}
+
+.quiz-score {
+  background: linear-gradient(100deg, #ff7300 10%, #646cff 90%);
+  color: #fff;
+  border-radius: 10px;
+  padding: 1em 2em;
+  font-weight: bold;
+  font-size: 1.18em;
+  box-shadow: 0 2px 15px #646cff20;
+  margin-bottom: 2em;
+  }
+
+@media (max-width: 900px) {
+  .carte-zone { max-width: 98vw; }
+  .quiz-panel-content { width: 99vw; padding: 1em 0.4em; }
+  }
+@media (max-width: 600px) {
+  .carte-zone { max-width: 100vw; }
+  .quiz-panel-content { padding: 0.7em 0.1em; }
+}
+
+h1 { font-size: 2.1em; font-weight: bold; margin-bottom: 0.5em; }
+h2 { font-size: 1.14em; margin-bottom: 0.3em; }
