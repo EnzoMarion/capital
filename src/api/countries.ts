@@ -10,13 +10,13 @@ export type Country = {
     status: string;
 };
 
-export async function fetchCountries(continent?: string) {
+export async function fetchCountries(selectedContinents?: string[]) {
     let query = supabase.from("countries").select("*");
-    if (continent) {
-        query = query.eq("continent", continent);
+    if (selectedContinents && selectedContinents.length > 0) {
+        query = query.in("continent", selectedContinents);
     }
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    return (data as Country[]) || [];
 }
 
