@@ -1,84 +1,65 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const CONTINENTS = [
-    "Africa",
-    "North America",
-    "South America",
-    "Asia",
-    "Europe",
-    "Oceania",
-    "Pacific",
-    "Antarctica",
-    "Other"
-] as const;
-type Continent = typeof CONTINENTS[number];
-
-const LABELS: Record<Continent, string> = {
-    Africa: "Afrique",
-    "North America": "Amérique du Nord",
-    "South America": "Amérique du Sud",
-    Asia: "Asie",
-    Europe: "Europe",
-    Oceania: "Océanie",
-    Pacific: "Pacifique",
-    Antarctica: "Antarctique",
-    Other: "Autre"
-};
+    { code: "Europe", label: "Europe" },
+    { code: "Asia", label: "Asie" },
+    { code: "Africa", label: "Afrique" },
+    { code: "North America", label: "Amérique du Nord" },
+    { code: "South America", label: "Amérique du Sud" },
+    { code: "Oceania", label: "Océanie" },
+];
 
 export default function SelectMode() {
-    const [selected, setSelected] = useState<Continent[]>([]);
+    const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
+    const [withTerritories, setWithTerritories] = useState(false);
     const navigate = useNavigate();
 
-    function handleChange(cont: Continent) {
-        setSelected(sel =>
-            sel.includes(cont)
-                ? sel.filter(c => c !== cont)
-                : [...sel, cont]
+    function handleContinentChange(code: string, checked: boolean) {
+        setSelectedContinents(cs =>
+            checked ? [...cs, code] : cs.filter(c => c !== code)
         );
     }
 
-    function handleStart() {
-        if (selected.length === 0) return;
-        // Passe la liste des continents comme query param séparé par des virgules
-        navigate(`/quiz?continents=${selected.map(encodeURIComponent).join(",")}`);
-    }
-
-    function handleSelectAll() {
-        setSelected([...CONTINENTS]);
-    }
-
-    function handleClear() {
-        setSelected([]);
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        const params = new URLSearchParams();
+        if (selectedContinents.length > 0) {
+            params.set("continents", selectedContinents.join(","));
+        }
+        if (withTerritories) {
+            params.set("territories", "1");
+        }
+        navigate("/quiz?" + params.toString());
     }
 
     return (
-        <div className="flex flex-col items-center mt-12">
-            <h2 className="text-xl font-bold mb-4">Choisis tes continents :</h2>
-            <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 justify-center">
+        <form onSubmit={handleSubmit} style={{ maxWidth: 500, margin: "3em auto" }}>
+            <h2>Choisis un ou plusieurs continents :</h2>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "1em 1.4em", marginBottom: "2em" }}>
                 {CONTINENTS.map(cont => (
-                    <label key={cont} className="flex items-center gap-2 cursor-pointer">
+                    <label key={cont.code} style={{ display: "flex", alignItems: "center" }}>
                         <input
                             type="checkbox"
-                            checked={selected.includes(cont)}
-                            onChange={() => handleChange(cont)}
+                            checked={selectedContinents.includes(cont.code)}
+                            onChange={e => handleContinentChange(cont.code, e.target.checked)}
                         />
-                        {LABELS[cont]}
+                        <span style={{ marginLeft: 7 }}>{cont.label}</span>
                     </label>
                 ))}
             </div>
-            <div className="flex gap-3 mb-4">
-                <button className="px-3 py-1 bg-gray-100 rounded" type="button" onClick={handleSelectAll}>Tout sélectionner</button>
-                <button className="px-3 py-1 bg-gray-100 rounded" type="button" onClick={handleClear}>Tout désélectionner</button>
-            </div>
-            <button
-                className="px-4 py-2 bg-blue-600 text-white rounded"
-                onClick={handleStart}
-                disabled={selected.length === 0}
-            >
+            <label style={{ display: "flex", alignItems: "center", marginBottom: "2em", fontWeight: 500 }}>
+                <input
+                    type="checkbox"
+                    checked={withTerritories}
+                    onChange={e => setWithTerritories(e.target.checked)}
+                    style={{ marginRight: "0.6em" }}
+                />
+                Afficher aussi les territoires/appartenances spéciales (Mayotte, Groenland…)
+            </label>
+            <button type="submit" style={{ marginTop: "1.3em" }}>
                 Commencer le quiz
             </button>
-            <a href="/" className="mt-6 px-4 py-2 bg-gray-300 text-black rounded">Retour à l'accueil</a>
-        </div>
+        </form>
     );
 }
