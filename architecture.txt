@@ -1,0 +1,23 @@
+Structure du dossier pour le volume Windows
+Le numéro de série du volume est E648-FDD7
+C:\USERS\MARIO\PHPSTORMPROJECTS\CAPITAL\SRC
+¦   App.css
+¦   App.jsx
+¦   App.tsx
+¦   index.css
+¦   main.jsx
+¦   main.tsx
+¦   
++---api
+¦       auth.ts
+¦       countries.ts
+¦       supabase.ts
+¦       
++---assets
+¦       react.svg
+¦       
++---pages
+        Home.tsx
+        Login.tsx
+        Quiz.tsx
+        
