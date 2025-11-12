@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 import AuthStatusIcon from "./components/AuthStatusIcon.tsx";
 import Login from "./pages/Login.tsx";
 import QuizEuType from "./pages/QuizEuType.tsx";
+import QuizFlagsType from "./pages/QuizFlagsType.tsx";
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
                     <Route path="/quiz" element={<Quiz />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/quiz-eu-type" element={<QuizEuType />} />
+                    <Route path="/quiz-flags-type" element={<QuizFlagsType />} />
                 </Routes>
         </AuthProvider>
     );
