@@ -27,12 +27,14 @@ export default function Login() {
                 else {
                     // Recharge le user et mets à jour le contexte pour affichage instantané
                     const { data } = await getUser();
-                    if (data?.user) setUser({ email: data.user.email, id: data.user.id });
+                    if (data?.user && data.user.email && data.user.id) {
+                        setUser({ email: data.user.email, id: data.user.id });
+                    }
                     setMessage("Connexion réussie !");
                     setTimeout(() => navigate("/"), 800); // Redirige sur accueil si tu veux
                 }
             }
-        } catch (e) {
+        } catch {
             setMessage("Erreur interne");
         }
         setLoading(false);

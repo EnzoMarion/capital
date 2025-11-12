@@ -14,17 +14,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         getUser().then(({ data }) => {
-            if (data?.user) setUser({ email: data.user.email, id: data.user.id });
+            const email = data?.user?.email;
+            const id = data?.user?.id;
+            if (email && id) setUser({ email, id });
             else setUser(null);
         });
         const { data: listener } = supabase.auth.onAuthStateChange((_ev, session) => {
-            if (session?.user) setUser({ email: session.user.email, id: session.user.id });
+            const email = session?.user?.email;
+            const id = session?.user?.id;
+            if (email && id) setUser({ email, id });
             else setUser(null);
         });
         return () => {
             listener?.subscription.unsubscribe();
         };
     }, []);
+
 
     return (
         <AuthContext.Provider value={{ user, setUser }}>
