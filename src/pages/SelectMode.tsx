@@ -1,6 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-
 const CONTINENTS = [
     { code: "Europe", label: "Europe" },
     { code: "Asia", label: "Asie" },
@@ -9,21 +8,20 @@ const CONTINENTS = [
     { code: "South America", label: "Amérique du Sud" },
     { code: "Oceania", label: "Océanie" },
 ];
-
 export default function SelectMode() {
     const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
     const [withTerritories, setWithTerritories] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     function handleContinentChange(code: string, checked: boolean) {
         setSelectedContinents(cs =>
             checked ? [...cs, code] : cs.filter(c => c !== code)
         );
     }
-
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        const params = new URLSearchParams();
+        const params = new URLSearchParams(location.search); // récupère &type=multiple
         if (selectedContinents.length > 0) {
             params.set("continents", selectedContinents.join(","));
         }
@@ -32,7 +30,6 @@ export default function SelectMode() {
         }
         navigate("/quiz?" + params.toString());
     }
-
     return (
         <form onSubmit={handleSubmit} style={{ maxWidth: 500, margin: "3em auto" }}>
             <h2>Choisis un ou plusieurs continents :</h2>

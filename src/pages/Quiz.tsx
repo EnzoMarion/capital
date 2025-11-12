@@ -3,8 +3,9 @@ import { fetchCountries } from "../api/countries";
 import type { Country } from "../api/countries";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CarteMonde } from "../components/CarteMonde";
+import MultipleChoice, {type MultipleChoiceOption } from "../components/MultipleChoice";
 
-function shuffle(array: Country[]) {
+function shuffle<T>(array: T[]): T[] {
     const arr = array.slice();
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -12,15 +13,13 @@ function shuffle(array: Country[]) {
     }
     return arr;
 }
-
 function clean(s: string) {
     return s
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
-        .replace(/['’`\-\. ]/g, "")
+        .replace(/['’`\-\\. ]/g, "")
         .toLowerCase();
 }
-
 type Answer = {
     country: Country;
     user: string;
@@ -35,12 +34,41 @@ export default function Quiz() {
     const [finished, setFinished] = useState(false);
     const [showCorrection, setShowCorrection] = useState(false);
     const [answers, setAnswers] = useState<Answer[]>([]);
-    const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean | null>(null);
+    const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean>(false);
+    const [mcOptions, setMCOptions] = useState<MultipleChoiceOption[]>([]);
 
     const location = useLocation();
     const navigate = useNavigate();
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
+
+    // Détection du mode depuis l’URL query : ?type=multiple ou ?type=input
+    const typeParam = new URLSearchParams(location.search).get("type");
+    const multipleChoiceMode = typeParam === "multiple";
+
+    function getMCOptions(correctCapital: string, countries: Country[]): MultipleChoiceOption[] {
+        const capitals = countries
+            .filter(c => c.capital && c.capital !== correctCapital)
+            .map(c => c.capital);
+        const randomChoices = shuffle(capitals).slice(0, 3);
+        const allChoices = shuffle([
+            ...randomChoices,
+            correctCapital
+        ]);
+        return allChoices.map(cap => ({ label: cap, value: cap }));
+    }
+
+    // Génère les choix UNIQUEMENT quand une nouvelle question est posée :
+    useEffect(() => {
+        if (
+            multipleChoiceMode &&
+            countries.length > 0 &&
+            current < countries.length
+        ) {
+            setMCOptions(getMCOptions(countries[current].capital, countries));
+        }
+        // PAS de showCorrection/dependance ici
+    }, [multipleChoiceMode, countries, current]);
 
     useEffect(() => {
         const query = new URLSearchParams(location.search);
@@ -49,7 +77,6 @@ export default function Quiz() {
             ? continentsParam.split(",")
             : [];
         const showTerritories = query.get("territories") === "1";
-
         fetchCountries(selectedContinents.length ? selectedContinents : undefined)
             .then(data => {
                 const filtered = data.filter(c =>
@@ -67,10 +94,10 @@ export default function Quiz() {
     useEffect(() => {
         if (showCorrection) {
             nextButtonRef.current?.focus();
-        } else {
+        } else if (!multipleChoiceMode) {
             inputRef.current?.focus();
         }
-    }, [showCorrection, current, finished]);
+    }, [showCorrection, current, finished, multipleChoiceMode]);
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -89,23 +116,21 @@ export default function Quiz() {
         setShowCorrection(true);
     }
 
-    function handleNext(e?: any) {
-        if (e) e.preventDefault();
-        // On ne touche pas à answers ici !
-        setCurrent(i => i + 1);
+    function handleNext() {
         setShowCorrection(false);
-        setLastAnswerCorrect(null);
-        setUserAnswer(""); // RAZ réponse, input unlocked
-        // focus pour nouvelle réponse
+        setLastAnswerCorrect(false);
+        setUserAnswer("");
+        if (current < countries.length - 1) {
+            setCurrent(i => i + 1);
+        } else {
+            setFinished(true);
+        }
         setTimeout(() => {
-            inputRef.current?.focus();
+            if (!multipleChoiceMode) inputRef.current?.focus();
         }, 0);
-        // Si fini
-        if (current + 1 >= countries.length) setFinished(true);
     }
 
     function handleKeyDown(e: React.KeyboardEvent) {
-        // Uniquement sur bouton suivant visible
         if (showCorrection && (e.key === "Enter" || e.key === " ")) {
             e.preventDefault();
             handleNext();
@@ -150,10 +175,10 @@ export default function Quiz() {
                             </table>
                         </div>
                     ) : (
-                        <div className="recap-success-msg">Aucune erreur, bravo !</div>
+                        <div className="recap-success-msg">Aucune erreur, bravo!</div>
                     )}
                     <div className="recap-actions">
-                        <button onClick={() => { setFinished(false); setCurrent(0); setScore(0); setUserAnswer(""); setAnswers([]); setLastAnswerCorrect(null); }}>Recommencer</button>
+                        <button onClick={() => { setFinished(false); setCurrent(0); setScore(0); setUserAnswer(""); setAnswers([]); setLastAnswerCorrect(false); }}>Recommencer</button>
                         <button onClick={() => navigate("/modes")}>Changer la sélection</button>
                         <a href="/">Accueil</a>
                     </div>
@@ -163,6 +188,9 @@ export default function Quiz() {
     }
 
     const country = countries[current];
+    const showAnswer =
+        showCorrection && answers.length > 0 ? answers[answers.length - 1].user : undefined;
+
     return (
         <div className="quiz-main-wrapper">
             <div className="quiz-content-inner">
@@ -173,37 +201,65 @@ export default function Quiz() {
                 )}
                 <form
                     className="quiz-card"
-                    onSubmit={handleSubmit}
+                    onSubmit={multipleChoiceMode ? e => e.preventDefault() : handleSubmit}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
                     <h2>Devine la capitale de</h2>
                     <div className="quiz-country">{country?.name}</div>
                     <div className="quiz-form" style={{ width: "100%", justifyContent: "center" }}>
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={userAnswer}
-                            onChange={e => setUserAnswer(e.target.value)}
-                            autoFocus
-                            className="quiz-input"
-                            placeholder="Écris la capitale"
-                            disabled={showCorrection}
-                        />
-                        {showCorrection ? (
+                        {multipleChoiceMode ? (
+                            <MultipleChoice
+                                options={mcOptions}
+                                onSelect={option => {
+                                    if (showCorrection) return; // NE MODIFIE PAS mcOptions en mode correction
+                                    const correct = clean(option.value) === clean(country.capital || "");
+                                    setLastAnswerCorrect(correct);
+                                    setAnswers(ans => [
+                                        ...ans,
+                                        {
+                                            country: country,
+                                            user: option.value,
+                                            isCorrect: correct,
+                                        }
+                                    ]);
+                                    if (correct) setScore(s => s + 1);
+                                    setShowCorrection(true);
+                                }}
+                                disabled={showCorrection && lastAnswerCorrect}
+                                selected={showAnswer}
+                                showCorrection={showCorrection}
+                                correct={country.capital}
+                            />
+                        ) : (
+                            <>
+                                <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={userAnswer}
+                                    onChange={e => setUserAnswer(e.target.value)}
+                                    autoFocus
+                                    className="quiz-input"
+                                    placeholder="Écris la capitale"
+                                    disabled={showCorrection}
+                                />
+                                {showCorrection ? null : (
+                                    <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
+                                        Valider
+                                    </button>
+                                )}
+                            </>
+                        )}
+                        {showCorrection && (
                             <button
                                 ref={nextButtonRef}
                                 className="quiz-btn-next"
                                 type="button"
-                                style={{ marginLeft: 0 }}
+                                style={{ marginLeft: 0, marginTop: multipleChoiceMode ? "1.4em" : "0" }}
                                 onClick={handleNext}
                                 tabIndex={0}
                             >
                                 {current === countries.length - 1 ? "Voir le résultat" : "Suivant"}
-                            </button>
-                        ) : (
-                            <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
-                                Valider
                             </button>
                         )}
                     </div>

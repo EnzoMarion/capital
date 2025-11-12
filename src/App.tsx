@@ -1,16 +1,18 @@
 import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Quiz from "./pages/Quiz";
+import QuizTypeSelect from "./pages/QuizTypeSelect";
 import SelectMode from "./pages/SelectMode";
+import Quiz from "./pages/Quiz";
 
-export default function App() {
+function App() {
     return (
         <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/quiz-type" element={<QuizTypeSelect />} />
+            <Route path="/select-mode" element={<SelectMode />} />
             <Route path="/quiz" element={<Quiz />} />
-            <Route path="/modes" element={<SelectMode />} />
         </Routes>
     );
 }
+
+export default App;
