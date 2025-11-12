@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { signup, login } from "../api/auth";
+import { signup, login, getUser } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -7,6 +9,8 @@ export default function Login() {
     const [mode, setMode] = useState<"login" | "register">("login");
     const [message, setMessage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const { setUser } = useAuth();
+    const navigate = useNavigate();
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -20,7 +24,13 @@ export default function Login() {
             } else {
                 const { error } = await login(email, password);
                 if (error) setMessage("Erreur: " + error.message);
-                else setMessage("Connexion réussie !");
+                else {
+                    // Recharge le user et mets à jour le contexte pour affichage instantané
+                    const { data } = await getUser();
+                    if (data?.user) setUser({ email: data.user.email, id: data.user.id });
+                    setMessage("Connexion réussie !");
+                    setTimeout(() => navigate("/"), 800); // Redirige sur accueil si tu veux
+                }
             }
         } catch (e) {
             setMessage("Erreur interne");

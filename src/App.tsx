@@ -3,15 +3,24 @@ import Home from "./pages/Home";
 import QuizTypeSelect from "./pages/QuizTypeSelect";
 import SelectMode from "./pages/SelectMode";
 import Quiz from "./pages/Quiz";
+import { AuthProvider } from "./context/AuthContext";
+import AuthStatusIcon from "./components/AuthStatusIcon.tsx";
+import Login from "./pages/Login.tsx";
+import QuizEuType from "./pages/QuizEuType.tsx";
 
 function App() {
     return (
-        <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/quiz-type" element={<QuizTypeSelect />} />
-            <Route path="/select-mode" element={<SelectMode />} />
-            <Route path="/quiz" element={<Quiz />} />
-        </Routes>
+        <AuthProvider>
+            <AuthStatusIcon />
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/quiz-type" element={<QuizTypeSelect />} />
+                    <Route path="/modes" element={<SelectMode />} />
+                    <Route path="/quiz" element={<Quiz />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/quiz-eu-type" element={<QuizEuType />} />
+                </Routes>
+        </AuthProvider>
     );
 }
 

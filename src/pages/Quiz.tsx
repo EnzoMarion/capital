@@ -3,7 +3,8 @@ import { fetchCountries } from "../api/countries";
 import type { Country } from "../api/countries";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CarteMonde } from "../components/CarteMonde";
-import MultipleChoice, {type MultipleChoiceOption } from "../components/MultipleChoice";
+import MultipleChoice, { type MultipleChoiceOption } from "../components/MultipleChoice";
+import { capitalVariantsMap } from "../utils/capitalVariants";
 
 function shuffle<T>(array: T[]): T[] {
     const arr = array.slice();
@@ -13,12 +14,25 @@ function shuffle<T>(array: T[]): T[] {
     }
     return arr;
 }
+function uniq(arr: string[]): string[] {
+    return [...new Set(arr)];
+}
 function clean(s: string) {
     return s
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/['’`\-\\. ]/g, "")
+        .replace(/[^0-9a-zA-Z]/g, "")
         .toLowerCase();
+}
+function answerOk(userInput: string, country: Country) {
+    const accepted = [country.capital, ...(country.capital_variants ?? [])]
+        .filter(Boolean)
+        .map(clean);
+    return accepted.includes(clean(userInput));
+}
+function answerYearOk(userInput: string, country: Country) {
+    if (!country.ue_date) return false;
+    const expect = country.ue_date.slice(0, 4);
+    return clean(userInput) === clean(expect);
 }
 type Answer = {
     country: Country;
@@ -42,48 +56,41 @@ export default function Quiz() {
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    // Détection du mode depuis l’URL query : ?type=multiple ou ?type=input
-    const typeParam = new URLSearchParams(location.search).get("type");
+    // Récupère la config depuis l'URL
+    const query = new URLSearchParams(location.search);
+    const typeParam = query.get("type");
     const multipleChoiceMode = typeParam === "multiple";
-
-    function getMCOptions(correctCapital: string, countries: Country[]): MultipleChoiceOption[] {
-        const capitals = countries
-            .filter(c => c.capital && c.capital !== correctCapital)
-            .map(c => c.capital);
-        const randomChoices = shuffle(capitals).slice(0, 3);
-        const allChoices = shuffle([
-            ...randomChoices,
-            correctCapital
-        ]);
-        return allChoices.map(cap => ({ label: cap, value: cap }));
-    }
-
-    // Génère les choix UNIQUEMENT quand une nouvelle question est posée :
-    useEffect(() => {
-        if (
-            multipleChoiceMode &&
-            countries.length > 0 &&
-            current < countries.length
-        ) {
-            setMCOptions(getMCOptions(countries[current].capital, countries));
-        }
-        // PAS de showCorrection/dependance ici
-    }, [multipleChoiceMode, countries, current]);
+    const euMode = query.get("eu") === "1";
+    const onlyTerritories = query.get("only_territories") === "1";
+    const showTerritories = query.get("territories") === "1";
+    const numQuestions = Number(query.get("num") ?? 99999);
+    const continentsParam = query.get("continents");
+    const selectedContinents = continentsParam ? continentsParam.split(",") : [];
 
     useEffect(() => {
-        const query = new URLSearchParams(location.search);
-        const continentsParam = query.get("continents");
-        const selectedContinents = continentsParam
-            ? continentsParam.split(",")
-            : [];
-        const showTerritories = query.get("territories") === "1";
         fetchCountries(selectedContinents.length ? selectedContinents : undefined)
             .then(data => {
-                const filtered = data.filter(c =>
-                    !!c.capital && !!c.name && !!c.code &&
-                    (showTerritories || !c.parent_code)
-                );
-                setCountries(shuffle(filtered));
+                // Injecte capital_variants avant le filtrage !
+                for(const country of data) {
+                    const v = capitalVariantsMap[country.code];
+                    if(v) country.capital_variants = v;
+                }
+                let filtered = euMode
+                    ? data.filter(c => c.ue_date && c.ue_date.match(/^\d{4}/))
+                    : data.filter(c => !!c.capital && !!c.name && !!c.code);
+                if (!euMode) {
+                    // Filtre classique territoires
+                    if (onlyTerritories) {
+                        filtered = filtered.filter(c => c.status === "part_of_country");
+                    } else if (!showTerritories) {
+                        filtered = filtered.filter(c => !c.parent_code);
+                    }
+                }
+                filtered = shuffle(filtered);
+                if (numQuestions !== 99999 && numQuestions < filtered.length) {
+                    filtered = filtered.slice(0, numQuestions);
+                }
+                setCountries(filtered);
             })
             .catch(e => {
                 console.error(e);
@@ -91,18 +98,45 @@ export default function Quiz() {
             });
     }, [location.search]);
 
+    // QCM options : 4 uniques, dont la bonne réponse
+    function getMCOptions(correct: string, allVals: string[]): MultipleChoiceOption[] {
+        const uniqueVals = uniq(allVals.filter(v => v && v !== correct));
+        const randomWrong = shuffle(uniqueVals).slice(0, 3);
+        const choices = shuffle([correct, ...randomWrong]);
+        return choices.map(y => ({ label: y, value: y }));
+    }
+    useEffect(() => {
+        if (!countries.length || current >= countries.length) return;
+        if (multipleChoiceMode) {
+            if (euMode) {
+                const year = countries[current]?.ue_date?.slice(0,4);
+                const allYears = uniq(countries.map(c => c.ue_date?.slice(0,4)).filter(Boolean));
+                setMCOptions(getMCOptions(year, allYears));
+            } else {
+                const correctCapital = countries[current]?.capital;
+                const allCapitals = uniq(countries.map(c => c.capital).filter(Boolean));
+                setMCOptions(getMCOptions(correctCapital, allCapitals));
+            }
+        }
+    }, [multipleChoiceMode, euMode, countries, current]);
+
     useEffect(() => {
         if (showCorrection) {
             nextButtonRef.current?.focus();
-        } else if (!multipleChoiceMode) {
+        } else {
             inputRef.current?.focus();
         }
-    }, [showCorrection, current, finished, multipleChoiceMode]);
+    }, [showCorrection, current, finished]);
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (showCorrection) return;
-        const correct = clean(countries[current]?.capital || "") === clean(userAnswer);
+        let correct = false;
+        if (euMode) {
+            correct = answerYearOk(userAnswer, countries[current]);
+        } else {
+            correct = answerOk(userAnswer, countries[current]);
+        }
         setLastAnswerCorrect(correct);
         setAnswers(ans => [
             ...ans,
@@ -126,7 +160,7 @@ export default function Quiz() {
             setFinished(true);
         }
         setTimeout(() => {
-            if (!multipleChoiceMode) inputRef.current?.focus();
+            inputRef.current?.focus();
         }, 0);
     }
 
@@ -160,7 +194,7 @@ export default function Quiz() {
                                 <tr>
                                     <th>Pays</th>
                                     <th>Ta réponse</th>
-                                    <th>Bonne réponse</th>
+                                    <th>{euMode ? "Année" : "Bonne réponse"}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -168,7 +202,7 @@ export default function Quiz() {
                                     <tr key={idx}>
                                         <td>{a.country.name}</td>
                                         <td style={{ color: "#ff5555" }}>{a.user || <i>(vide)</i>}</td>
-                                        <td style={{ fontWeight: 600 }}>{a.country.capital}</td>
+                                        <td style={{ fontWeight: 600 }}>{euMode ? (a.country.ue_date?.slice(0,4)||"?") : a.country.capital}</td>
                                     </tr>
                                 ))}
                                 </tbody>
@@ -179,7 +213,7 @@ export default function Quiz() {
                     )}
                     <div className="recap-actions">
                         <button onClick={() => { setFinished(false); setCurrent(0); setScore(0); setUserAnswer(""); setAnswers([]); setLastAnswerCorrect(false); }}>Recommencer</button>
-                        <button onClick={() => navigate("/modes")}>Changer la sélection</button>
+                        <button onClick={() => navigate(euMode ? "/quiz-eu-type" : "/modes")}>Changer le mode</button>
                         <a href="/">Accueil</a>
                     </div>
                 </div>
@@ -188,13 +222,13 @@ export default function Quiz() {
     }
 
     const country = countries[current];
-    const showAnswer =
-        showCorrection && answers.length > 0 ? answers[answers.length - 1].user : undefined;
+    const showAnswer = showCorrection && answers.length > 0 ? answers[answers.length - 1].user : undefined;
 
     return (
         <div className="quiz-main-wrapper">
             <div className="quiz-content-inner">
-                {country?.code && (
+                {/* Affiche la carte du pays SAUF en mode Année UE */}
+                {country?.code && !euMode && (
                     <div className="quiz-map-wrapper">
                         <CarteMonde codeISO={country.code} />
                     </div>
@@ -205,50 +239,97 @@ export default function Quiz() {
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
-                    <h2>Devine la capitale de</h2>
+                    <h2>{euMode ? "Année d'adhésion à l'Union Européenne :" : "Devine la capitale de"}</h2>
                     <div className="quiz-country">{country?.name}</div>
                     <div className="quiz-form" style={{ width: "100%", justifyContent: "center" }}>
-                        {multipleChoiceMode ? (
-                            <MultipleChoice
-                                options={mcOptions}
-                                onSelect={option => {
-                                    if (showCorrection) return; // NE MODIFIE PAS mcOptions en mode correction
-                                    const correct = clean(option.value) === clean(country.capital || "");
-                                    setLastAnswerCorrect(correct);
-                                    setAnswers(ans => [
-                                        ...ans,
-                                        {
-                                            country: country,
-                                            user: option.value,
-                                            isCorrect: correct,
-                                        }
-                                    ]);
-                                    if (correct) setScore(s => s + 1);
-                                    setShowCorrection(true);
-                                }}
-                                disabled={showCorrection && lastAnswerCorrect}
-                                selected={showAnswer}
-                                showCorrection={showCorrection}
-                                correct={country.capital}
-                            />
-                        ) : (
-                            <>
-                                <input
-                                    ref={inputRef}
-                                    type="text"
-                                    value={userAnswer}
-                                    onChange={e => setUserAnswer(e.target.value)}
-                                    autoFocus
-                                    className="quiz-input"
-                                    placeholder="Écris la capitale"
-                                    disabled={showCorrection}
+                        {euMode ? (
+                            multipleChoiceMode ? (
+                                <MultipleChoice
+                                    options={mcOptions}
+                                    onSelect={option => {
+                                        if (showCorrection) return;
+                                        const correct = country.ue_date && clean(option.value) === clean(country.ue_date.slice(0,4));
+                                        setLastAnswerCorrect(!!correct);
+                                        setAnswers(ans => [
+                                            ...ans,
+                                            {
+                                                country: country,
+                                                user: option.value,
+                                                isCorrect: !!correct,
+                                            }
+                                        ]);
+                                        if (correct) setScore(s => s + 1);
+                                        setShowCorrection(true);
+                                    }}
+                                    disabled={showCorrection && lastAnswerCorrect}
+                                    selected={showAnswer}
+                                    showCorrection={showCorrection}
+                                    correct={country.ue_date ? country.ue_date.slice(0,4) : undefined}
                                 />
-                                {showCorrection ? null : (
-                                    <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
-                                        Valider
-                                    </button>
-                                )}
-                            </>
+                            ) : (
+                                <>
+                                    <input
+                                        ref={inputRef}
+                                        type="number"
+                                        inputMode="numeric"
+                                        value={userAnswer}
+                                        onChange={e => setUserAnswer(e.target.value)}
+                                        autoFocus
+                                        className="quiz-input"
+                                        placeholder="Écris l'année (ex : 2004)"
+                                        disabled={showCorrection}
+                                        min={1950}
+                                    />
+                                    {showCorrection ? null : (
+                                        <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
+                                            Valider
+                                        </button>
+                                    )}
+                                </>
+                            )
+                        ) : (
+                            multipleChoiceMode ? (
+                                <MultipleChoice
+                                    options={mcOptions}
+                                    onSelect={option => {
+                                        if (showCorrection) return;
+                                        const correct = answerOk(option.value, country);
+                                        setLastAnswerCorrect(correct);
+                                        setAnswers(ans => [
+                                            ...ans,
+                                            {
+                                                country: country,
+                                                user: option.value,
+                                                isCorrect: correct,
+                                            }
+                                        ]);
+                                        if (correct) setScore(s => s + 1);
+                                        setShowCorrection(true);
+                                    }}
+                                    disabled={showCorrection && lastAnswerCorrect}
+                                    selected={showAnswer}
+                                    showCorrection={showCorrection}
+                                    correct={country.capital}
+                                />
+                            ) : (
+                                <>
+                                    <input
+                                        ref={inputRef}
+                                        type="text"
+                                        value={userAnswer}
+                                        onChange={e => setUserAnswer(e.target.value)}
+                                        autoFocus
+                                        className="quiz-input"
+                                        placeholder="Écris la capitale"
+                                        disabled={showCorrection}
+                                    />
+                                    {showCorrection ? null : (
+                                        <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
+                                            Valider
+                                        </button>
+                                    )}
+                                </>
+                            )
                         )}
                         {showCorrection && (
                             <button
@@ -268,8 +349,10 @@ export default function Quiz() {
                         <div className={`quiz-correction ${lastAnswerCorrect ? "correct" : "wrong"}`}>
                             {lastAnswerCorrect
                                 ? "Bonne réponse ! 👏"
-                                : <>Mauvaise réponse.<br />La bonne réponse était <b>{country.capital}</b></>
-                            }
+                                : (euMode
+                                        ? <>Mauvaise réponse.<br />La bonne année était <b>{country.ue_date ? country.ue_date.slice(0,4) : "?"}</b></>
+                                        : <>Mauvaise réponse.<br />La bonne réponse était <b>{country.capital}</b></>
+                                )}
                         </div>
                     )}
                 </form>

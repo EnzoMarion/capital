@@ -5,7 +5,7 @@ export default function QuizTypeSelect() {
     function selectType(type: "input" | "multiple") {
         const params = new URLSearchParams(location.search);
         params.set("type", type);
-        navigate(`/select-mode?${params.toString()}`);
+        navigate(`/modes?${params.toString()}`);
     }
     return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 60 }}>

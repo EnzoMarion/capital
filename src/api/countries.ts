@@ -4,10 +4,12 @@ export type Country = {
     name: string;
     capital: string;
     code: string;
+    capital_variants?: string[];
     continent: string;
     is_island: boolean;
     parent_code?: string;
     status: string;
+    ue_date: string;
 };
 
 export async function fetchCountries(selectedContinents?: string[]) {

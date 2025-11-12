@@ -9,3 +9,6 @@ export async function login(email: string, password: string) {
 export async function getUser() {
     return supabase.auth.getUser();
 }
+export async function logout() {
+    return supabase.auth.signOut();
+}
