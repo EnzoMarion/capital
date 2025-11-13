@@ -60,7 +60,6 @@ export default function Quiz() {
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    // Récupère la config depuis l'URL
     const query = new URLSearchParams(location.search);
     const typeParam = query.get("type");
     const multipleChoiceMode = typeParam === "multiple";
@@ -88,7 +87,6 @@ export default function Quiz() {
                     else if (!showTerritories) filtered = filtered.filter(c => !c.parent_code);
                 }
 
-                // EXCLUSION spécifique aux drapeaux !
                 if (flagsMode) {
                     filtered = filtered.filter(c => {
                         const alpha2 = isoNumToAlpha2[String(c.code).padStart(3, "0")];
@@ -178,15 +176,13 @@ export default function Quiz() {
     function Flag({code}: {code: string | number}) {
         const alpha2 = isoNumToAlpha2[String(code).padStart(3, '0')];
         if (!alpha2 || alpha2 === "??") {
-            return <span style={{
-                display: "inline-block", width:60, height:40, background: "#f3f3f8", borderRadius: 7, color: "#aaa", lineHeight: "40px", textAlign:"center", fontSize:28
-            }}>❓</span>;
+            return <span className="flag-fallback">❓</span>;
         }
         return (
             <img
                 src={`https://flagcdn.com/${alpha2.toLowerCase()}.svg`}
                 alt="drapeau"
-                style={{width: 60, height: 40, objectFit: "contain", background: "none", borderRadius: 7}}
+                className="flag-img"
                 onError={e => { (e.currentTarget as HTMLImageElement).replaceWith(document.createTextNode("❓")); }}
             />
         );
@@ -228,8 +224,8 @@ export default function Quiz() {
                                             </td>
                                         )}
                                         <td>{a.country.name}</td>
-                                        <td style={{ color: "#ff5555" }}>{a.user || <i>(vide)</i>}</td>
-                                        <td style={{ fontWeight: 600 }}>
+                                        <td className="recap-wrong-answer">{a.user || <i>(vide)</i>}</td>
+                                        <td className="recap-correct-answer">
                                             {euMode
                                                 ? (a.country.ue_date?.slice(0,4)||"?")
                                                 : flagsMode
@@ -261,7 +257,7 @@ export default function Quiz() {
         <div className="quiz-main-wrapper">
             <div className="quiz-content-inner">
                 {flagsMode && country?.code && (
-                    <div style={{background:"#f5f7fa", borderRadius:11, display:"inline-block", padding:10}}>
+                    <div className="flag-wrapper">
                         <Flag code={country.code} />
                     </div>
                 )}
@@ -271,14 +267,14 @@ export default function Quiz() {
                     </div>
                 )}
                 <form
-                    className="quiz-card"
+                    className={`quiz-card ${typeParam === "input" ? "input-mode" : ""}`}
                     onSubmit={multipleChoiceMode ? e => e.preventDefault() : handleSubmit}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
                     <h2>
                         {euMode
-                            ? "Année d'adhésion à l'Union Européenne :"
+                            ? "Année d'adhésion à l'Union Européenne :"
                             : flagsMode
                                 ? "Quel est ce pays ?"
                                 : "Devine la capitale de"}
@@ -286,7 +282,7 @@ export default function Quiz() {
                     <div className="quiz-country">
                         {flagsMode ? null : country?.name}
                     </div>
-                    <div className="quiz-form" style={{ width: "100%", justifyContent: "center" }}>
+                    <div className="quiz-form">
                         {euMode ? (
                             multipleChoiceMode ? (
                                 <MultipleChoice
@@ -321,12 +317,12 @@ export default function Quiz() {
                                         onChange={e => setUserAnswer(e.target.value)}
                                         autoFocus
                                         className="quiz-input"
-                                        placeholder="Écris l'année (ex : 2004)"
+                                        placeholder="Écris l'année (ex : 2004)"
                                         disabled={showCorrection}
                                         min={1950}
                                     />
                                     {showCorrection ? null : (
-                                        <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
+                                        <button className="quiz-btn" type="submit">
                                             Valider
                                         </button>
                                     )}
@@ -369,7 +365,7 @@ export default function Quiz() {
                                         disabled={showCorrection}
                                     />
                                     {showCorrection ? null : (
-                                        <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
+                                        <button className="quiz-btn" type="submit">
                                             Valider
                                         </button>
                                     )}
@@ -412,7 +408,7 @@ export default function Quiz() {
                                         disabled={showCorrection}
                                     />
                                     {showCorrection ? null : (
-                                        <button className="quiz-btn" type="submit" style={{ marginLeft: 0 }}>
+                                        <button className="quiz-btn" type="submit">
                                             Valider
                                         </button>
                                     )}
@@ -424,7 +420,6 @@ export default function Quiz() {
                                 ref={nextButtonRef}
                                 className="quiz-btn-next"
                                 type="button"
-                                style={{ marginLeft: 0, marginTop: multipleChoiceMode ? "1.4em" : "0" }}
                                 onClick={handleNext}
                                 tabIndex={0}
                             >
@@ -436,7 +431,7 @@ export default function Quiz() {
                     {showCorrection && (
                         <div className={`quiz-correction ${lastAnswerCorrect ? "correct" : "wrong"}`}>
                             {lastAnswerCorrect
-                                ? "Bonne réponse ! 👏"
+                                ? "Bonne réponse ! 👏"
                                 : (euMode
                                         ? <>Mauvaise réponse.<br />La bonne année était <b>{country.ue_date ? country.ue_date.slice(0,4) : "?"}</b></>
                                         : flagsMode

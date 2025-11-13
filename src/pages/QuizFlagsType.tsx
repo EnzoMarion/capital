@@ -39,47 +39,45 @@ export default function QuizFlagsType() {
     }
 
     return (
-        <form style={{ maxWidth: 500, margin: "3em auto" }} onSubmit={e => e.preventDefault()}>
+        <form className="config-form" onSubmit={e => e.preventDefault()}>
             <h2>Mode Drapeaux</h2>
-            <div style={{ marginBottom:25, fontWeight:600 }}>Choisis un ou plusieurs continents :</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1em 1.4em", marginBottom: "2em" }}>
+            <div className="config-section-title">Choisis un ou plusieurs continents :</div>
+            <div className="config-checkboxes">
                 {CONTINENTS.map(cont => (
-                    <label key={cont.code} style={{ display: "flex", alignItems: "center" }}>
+                    <label key={cont.code} className="config-checkbox-label">
                         <input
                             type="checkbox"
                             checked={selectedContinents.includes(cont.code)}
                             onChange={e => handleContinentChange(cont.code, e.target.checked)}
                             disabled={onlyTerritories}
                         />
-                        <span style={{ marginLeft: 7 }}>{cont.label}</span>
+                        <span>{cont.label}</span>
                     </label>
                 ))}
             </div>
-            <label style={{ display: "flex", alignItems: "center", marginBottom: "2em", fontWeight: 500 }}>
+            <label className="config-option-label">
                 <input
                     type="checkbox"
                     checked={withTerritories}
                     onChange={e => setWithTerritories(e.target.checked)}
-                    style={{ marginRight: "0.6em" }}
                     disabled={onlyTerritories}
                 />
                 Afficher aussi les territoires/appartenances spéciales
             </label>
-            <label style={{ display: "flex", alignItems: "center", marginBottom:"2em", fontWeight: 500 }}>
+            <label className="config-option-label">
                 <input
                     type="checkbox"
                     checked={onlyTerritories}
                     onChange={e => setOnlyTerritories(e.target.checked)}
-                    style={{ marginRight: "0.6em" }}
                 />
                 Réviser uniquement les territoires/appartenances spéciales
             </label>
-            <div style={{marginBottom: "2em"}}>
-                <label style={{ fontWeight: 500 }}>Nombre de questions du quiz :</label>
+            <div className="config-select-wrapper">
+                <label className="config-select-label">Nombre de questions du quiz :</label>
                 <select
                     value={numQuestions}
                     onChange={e => setNumQuestions(Number(e.target.value))}
-                    style={{ marginLeft: 14, fontSize: "1em", padding: "0.25em 1em" }}
+                    className="config-select"
                 >
                     <option value={99999}>Tout / maximum possible</option>
                     {QUESTION_COUNTS.map(n => (
@@ -87,17 +85,11 @@ export default function QuizFlagsType() {
                     ))}
                 </select>
             </div>
-            <div style={{display:"flex",gap:"2em",marginTop:"2em", justifyContent:"center"}}>
-                <button type="button"
-                        style={{padding:"15px 32px",fontWeight:600,background:"#646cff",color:"#fff",border:"none",borderRadius:7,fontSize:"1.14em"}}
-                        onClick={() => startQuiz("multiple")}
-                >
+            <div className="config-action-buttons">
+                <button type="button" className="config-btn config-btn-primary" onClick={() => startQuiz("multiple")}>
                     QCM (type=multiple)
                 </button>
-                <button type="button"
-                        style={{padding:"15px 32px",fontWeight:600,background:"#1bc47d",color:"#fff",border:"none",borderRadius:7,fontSize:"1.14em"}}
-                        onClick={() => startQuiz("input")}
-                >
+                <button type="button" className="config-btn config-btn-secondary" onClick={() => startQuiz("input")}>
                     Saisie (type=input)
                 </button>
             </div>

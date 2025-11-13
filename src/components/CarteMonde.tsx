@@ -8,39 +8,39 @@ type TopoCountry = {
 
 export function CarteMonde({ codeISO }: { codeISO: string }) {
     return (
-    <div className="carte-fullscreen-stack">
-        <ComposableMap
-            projectionConfig={{ scale: 160 }}
-            width={1100}
-            height={400}
-            style={{ width: "100%", height: "auto", minHeight: "320px" }}
-        >
-            <Geographies geography={geoUrl}>
-                {({ geographies }: { geographies: TopoCountry[] }) =>
-                    geographies.map((geo) => {
-                        const isTarget = geo.id === codeISO.trim();
-                        return (
-                            <Geography
-                                key={geo.id}
-                                geography={geo}
-                                fill={isTarget ? "#ff7300" : "#D6D6DA"}
-                                stroke="#444"
-                                style={{
-                                    default: { outline: "none" },
-                                    hover: {
-                                        outline: "none",
-                                        filter: isTarget
-                                            ? "drop-shadow(0 0 8px #ff7300aa)"
-                                            : "drop-shadow(0 0 7px #646cff88)",
-                                    },
-                                    pressed: { outline: "none" }
-                                }}
-                            />
-                        );
-                    })
-                }
-            </Geographies>
-        </ComposableMap>
-    </div>
+        <div className="carte-fullscreen-stack">
+            <ComposableMap
+                projectionConfig={{ scale: 160 }}
+                width={1100}
+                height={400}
+                className="carte-map"
+            >
+                <Geographies geography={geoUrl}>
+                    {({ geographies }: { geographies: TopoCountry[] }) =>
+                        geographies.map((geo) => {
+                            const isTarget = geo.id === codeISO.trim();
+                            return (
+                                <Geography
+                                    key={geo.id}
+                                    geography={geo}
+                                    fill={isTarget ? "#ff7300" : "#D6D6DA"}
+                                    stroke="#444"
+                                    style={{
+                                        default: { outline: "none" },
+                                        hover: {
+                                            outline: "none",
+                                            filter: isTarget
+                                                ? "drop-shadow(0 0 8px #ff7300aa)"
+                                                : "drop-shadow(0 0 7px #646cff88)",
+                                        },
+                                        pressed: { outline: "none" }
+                                    }}
+                                />
+                            );
+                        })
+                    }
+                </Geographies>
+            </ComposableMap>
+        </div>
     );
 }
