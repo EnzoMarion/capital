@@ -6,6 +6,7 @@ import { CarteMonde } from "../components/CarteMonde";
 import MultipleChoice, { type MultipleChoiceOption } from "../components/MultipleChoice";
 import { capitalVariantsMap } from "../utils/capitalVariants";
 import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
+import { supabase } from "../api/supabase";
 
 function shuffle<T>(array: T[]): T[] {
     const arr = array.slice();
@@ -44,6 +45,12 @@ type Answer = {
     isCorrect: boolean;
 };
 
+type CustomQuestion = {
+    country_code: string;
+    country_name: string;
+    question_type: "capitale" | "drapeau" | "annee_eu";
+};
+
 export default function Quiz() {
     const [countries, setCountries] = useState<Country[]>([]);
     const [current, setCurrent] = useState(0);
@@ -54,24 +61,70 @@ export default function Quiz() {
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean>(false);
     const [mcOptions, setMCOptions] = useState<MultipleChoiceOption[]>([]);
+    const [quizLoaded, setQuizLoaded] = useState(false);
+    const [customQuestions, setCustomQuestions] = useState<CustomQuestion[] | null>(null);
+    const [allCountries, setAllCountries] = useState<Country[]>([]); // tableau complet pour lookup code => objet
 
     const location = useLocation();
-    const navigate = useNavigate();
+    useNavigate();
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
+    // Use quiz_id (custom quiz) ou fallback sur les params d'URL classiques
     const query = new URLSearchParams(location.search);
-    const typeParam = query.get("type");
-    const multipleChoiceMode = typeParam === "multiple";
-    const euMode = query.get("eu") === "1";
-    const flagsMode = query.get("flags") === "1";
-    const onlyTerritories = query.get("only_territories") === "1";
-    const showTerritories = query.get("territories") === "1";
-    const numQuestions = Number(query.get("num") ?? 99999);
-    const continentsParam = query.get("continents");
-    const selectedContinents = continentsParam ? continentsParam.split(",") : [];
+    const quizId = query.get("quiz_id");
 
+    const [flagsMode, setFlagsMode] = useState(false);
+    const [euMode, setEuMode] = useState(false);
+    const [typeParam, setTypeParam] = useState<string>("multiple");
+    const [onlyTerritories, setOnlyTerritories] = useState(false);
+    const [showTerritories, setShowTerritories] = useState(false);
+    const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
+    const [numQuestions, setNumQuestions] = useState<number>(99999);
+
+    // 1. Config quiz : charge custom sequence OU standard via url
     useEffect(() => {
+        if (!quizId) {
+            // Mode standard via URL
+            setFlagsMode(query.get("flags") === "1");
+            setEuMode(query.get("eu") === "1");
+            setTypeParam(query.get("type") || "multiple");
+            setOnlyTerritories(query.get("only_territories") === "1");
+            setShowTerritories(query.get("territories") === "1");
+            setNumQuestions(Number(query.get("num") ?? 99999));
+            const continentsParam = query.get("continents");
+            setSelectedContinents(continentsParam ? continentsParam.split(",") : []);
+            setQuizLoaded(true);
+            setCustomQuestions(null);
+            return;
+        }
+        setQuizLoaded(false);
+        supabase.from("quizzes").select("settings").eq("id", quizId).single()
+            .then(async ({ data }) => {
+                if (data && data.settings) {
+                    if (data.settings.mode === "custom_sequence" && Array.isArray(data.settings.questions)) {
+                        setCustomQuestions(data.settings.questions);
+                        const pays = await fetchCountries();
+                        setAllCountries(pays);
+                        setQuizLoaded(true);
+                    } else {
+                        setFlagsMode(data.settings.mode === "flags");
+                        setEuMode(data.settings.mode === "eu");
+                        setTypeParam(data.settings.inputType || "multiple");
+                        setOnlyTerritories(!!data.settings.onlyTerritories);
+                        setShowTerritories(!!data.settings.withTerritories);
+                        setNumQuestions(Number(data.settings.numQuestions ?? 99999));
+                        setSelectedContinents(data.settings.continents ?? []);
+                        setCustomQuestions(null);
+                        setQuizLoaded(true);
+                    }
+                }
+            });
+    }, [location.search, quizId]);
+
+    // 2. Pour les quiz classiques, charge les pays filtrés
+    useEffect(() => {
+        if (!quizLoaded || customQuestions) return;
         fetchCountries(selectedContinents.length ? selectedContinents : undefined)
             .then(data => {
                 for (const country of data) {
@@ -86,14 +139,12 @@ export default function Quiz() {
                     if (onlyTerritories) filtered = filtered.filter(c => c.status === "part_of_country");
                     else if (!showTerritories) filtered = filtered.filter(c => !c.parent_code);
                 }
-
                 if (flagsMode) {
                     filtered = filtered.filter(c => {
                         const alpha2 = isoNumToAlpha2[String(c.code).padStart(3, "0")];
                         return alpha2 && alpha2 !== "??";
                     });
                 }
-
                 filtered = shuffle(filtered);
                 if (numQuestions !== 99999 && numQuestions < filtered.length) {
                     filtered = filtered.slice(0, numQuestions);
@@ -104,18 +155,12 @@ export default function Quiz() {
                 console.error(e);
                 setCountries([]);
             });
-    }, [location.search]);
+    }, [selectedContinents, showTerritories, onlyTerritories, euMode, flagsMode, numQuestions, quizLoaded, customQuestions]);
 
-    function getMCOptions(correct: string, allVals: string[]): MultipleChoiceOption[] {
-        const uniqueVals = uniq(allVals.filter(v => v && v !== correct));
-        const randomWrong = shuffle(uniqueVals).slice(0, 3);
-        const choices = shuffle([correct, ...randomWrong]);
-        return choices.map(y => ({ label: y, value: y }));
-    }
-
+    // 3. Gestion MCQ pour mode classique
     useEffect(() => {
-        if (!countries.length || current >= countries.length) return;
-        if (multipleChoiceMode) {
+        if (!countries.length || current >= countries.length || customQuestions) return;
+        if (typeParam === "multiple") {
             if (euMode) {
                 const year = countries[current]?.ue_date?.slice(0,4);
                 const allYears = uniq(countries.map(c => c.ue_date?.slice(0,4)).filter(Boolean));
@@ -130,7 +175,36 @@ export default function Quiz() {
                 setMCOptions(getMCOptions(correctCapital, allCapitals));
             }
         }
-    }, [multipleChoiceMode, flagsMode, euMode, countries, current]);
+    }, [typeParam, flagsMode, euMode, countries, current, customQuestions]);
+
+    // 4. Gestion MCQ pour mode custom_sequence
+    useEffect(() => {
+        if (!customQuestions || !allCountries.length || current >= customQuestions.length) return;
+        const q = customQuestions[current];
+        const country = allCountries.find(c => c.code === q.country_code);
+        if (!country) return;
+        if (q.question_type === "capitale" && typeParam === "multiple") {
+            // MCQ sur capitale
+            const correctCapital = country.capital;
+            const allCapitals = uniq(allCountries.map(c => c.capital).filter(Boolean));
+            setMCOptions(getMCOptions(correctCapital, allCapitals));
+        } else if (q.question_type === "drapeau" && typeParam === "multiple") {
+            const correctCountry = country.name;
+            const allNames = uniq(allCountries.map(c => c.name).filter(Boolean));
+            setMCOptions(getMCOptions(correctCountry, allNames));
+        } else if (q.question_type === "annee_eu" && typeParam === "multiple") {
+            const year = country.ue_date?.slice(0,4) || "?";
+            const allYears = uniq(allCountries.map(c => c.ue_date?.slice(0,4)).filter(Boolean));
+            setMCOptions(getMCOptions(year, allYears));
+        }
+    }, [customQuestions, allCountries, current, typeParam]);
+
+    function getMCOptions(correct: string, allVals: string[]): MultipleChoiceOption[] {
+        const uniqueVals = uniq(allVals.filter(v => v && v !== correct));
+        const randomWrong = shuffle(uniqueVals).slice(0, 3);
+        const choices = shuffle([correct, ...randomWrong]);
+        return choices.map(y => ({ label: y, value: y }));
+    }
 
     useEffect(() => {
         if (showCorrection) nextButtonRef.current?.focus();
@@ -141,27 +215,58 @@ export default function Quiz() {
         e.preventDefault();
         if (showCorrection) return;
         let correct = false;
-        if (euMode) correct = answerYearOk(userAnswer, countries[current]);
-        else if (flagsMode) correct = answerCountryOk(userAnswer, countries[current]);
-        else correct = answerOk(userAnswer, countries[current]);
-        setLastAnswerCorrect(correct);
-        setAnswers(ans => [
-            ...ans,
-            {
-                country: countries[current],
-                user: userAnswer,
-                isCorrect: correct
+        if (customQuestions && allCountries.length) {
+            const customQ = customQuestions[current];
+            const country = allCountries.find(c => c.code === customQ.country_code);
+            if (!country) return;
+            switch (customQ.question_type) {
+                case "capitale":
+                    correct = answerOk(userAnswer, country);
+                    break;
+                case "drapeau":
+                    correct = answerCountryOk(userAnswer, country);
+                    break;
+                case "annee_eu":
+                    correct = answerYearOk(userAnswer, country);
+                    break;
             }
-        ]);
-        if (correct) setScore(s => s + 1);
-        setShowCorrection(true);
+            setLastAnswerCorrect(correct);
+            setAnswers(ans => [
+                ...ans,
+                {
+                    country: country,
+                    user: userAnswer,
+                    isCorrect: correct
+                }
+            ]);
+            if (correct) setScore(s => s + 1);
+            setShowCorrection(true);
+        } else {
+            // quiz classique
+            let correct = false;
+            if (euMode) correct = answerYearOk(userAnswer, countries[current]);
+            else if (flagsMode) correct = answerCountryOk(userAnswer, countries[current]);
+            else correct = answerOk(userAnswer, countries[current]);
+            setLastAnswerCorrect(correct);
+            setAnswers(ans => [
+                ...ans,
+                {
+                    country: countries[current],
+                    user: userAnswer,
+                    isCorrect: correct
+                }
+            ]);
+            if (correct) setScore(s => s + 1);
+            setShowCorrection(true);
+        }
     }
 
     function handleNext() {
         setShowCorrection(false);
         setLastAnswerCorrect(false);
         setUserAnswer("");
-        if (current < countries.length - 1) setCurrent(i => i + 1);
+        const len = customQuestions ? customQuestions.length : countries.length;
+        if (current < len - 1) setCurrent(i => i + 1);
         else setFinished(true);
         setTimeout(() => { inputRef.current?.focus(); }, 0);
     }
@@ -188,11 +293,16 @@ export default function Quiz() {
         );
     }
 
-    if (countries.length === 0) return <p>Chargement…</p>;
+    // =====================
+    // RENDER
+    // =====================
+    if (!quizLoaded || (customQuestions && !allCountries.length)) return <p>Chargement…</p>;
+
+    const finishedLength = customQuestions ? customQuestions.length : countries.length;
 
     if (finished) {
         const wrongAnswers = answers.filter(a => !a.isCorrect);
-        const percent = Math.round((score / countries.length) * 100);
+        const percent = Math.round((score / finishedLength) * 100);
         return (
             <div className="quiz-result-wrapper">
                 <div className="recap-card">
@@ -201,7 +311,7 @@ export default function Quiz() {
                     <div className="recap-progress">
                         <span>{score} bonnes réponses</span>
                         <span> / </span>
-                        <span>{countries.length} questions</span>
+                        <span>{finishedLength} questions</span>
                     </div>
                     {wrongAnswers.length > 0 ? (
                         <div>
@@ -209,28 +319,20 @@ export default function Quiz() {
                             <table className="recap-table">
                                 <thead>
                                 <tr>
-                                    {flagsMode && <th>Drapeau</th>}
+                                    <th>Drapeau</th>
                                     <th>Pays</th>
                                     <th>Ta réponse</th>
-                                    <th>{euMode ? "Année" : flagsMode ? "Nom du pays" : "Bonne réponse"}</th>
+                                    <th>Bonne réponse</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 {wrongAnswers.map((a, idx) => (
                                     <tr key={idx}>
-                                        {flagsMode && (
-                                            <td>
-                                                <Flag code={a.country.code} />
-                                            </td>
-                                        )}
+                                        <td><Flag code={a.country.code} /></td>
                                         <td>{a.country.name}</td>
                                         <td className="recap-wrong-answer">{a.user || <i>(vide)</i>}</td>
                                         <td className="recap-correct-answer">
-                                            {euMode
-                                                ? (a.country.ue_date?.slice(0,4)||"?")
-                                                : flagsMode
-                                                    ? a.country.name
-                                                    : a.country.capital}
+                                            {a.country.capital}
                                         </td>
                                     </tr>
                                 ))}
@@ -242,7 +344,6 @@ export default function Quiz() {
                     )}
                     <div className="recap-actions">
                         <button onClick={() => { setFinished(false); setCurrent(0); setScore(0); setUserAnswer(""); setAnswers([]); setLastAnswerCorrect(false); }}>Recommencer</button>
-                        <button onClick={() => navigate(euMode ? "/quiz-eu-type" : flagsMode ? "/quiz-flags-type" : "/modes")}>Changer le mode</button>
                         <a href="/">Accueil</a>
                     </div>
                 </div>
@@ -250,76 +351,112 @@ export default function Quiz() {
         );
     }
 
-    const country = countries[current];
-    const showAnswer = showCorrection && answers.length > 0 ? answers[answers.length - 1].user : undefined;
+    // -- Quelle question on affiche ? --
+    let questionType = "capitale", country: Country | undefined;
+    if (customQuestions) {
+        const q = customQuestions[current];
+        country = allCountries.find(c => c.code === q.country_code);
+        questionType = q.question_type;
+    } else {
+        country = countries[current];
+    }
 
+    // -- Si sequence personnalisée --
     return (
         <div className="quiz-main-wrapper">
             <div className="quiz-content-inner">
-                {flagsMode && country?.code && (
+                {country && questionType === "drapeau" && (
                     <div className="flag-wrapper">
                         <Flag code={country.code} />
                     </div>
                 )}
-                {country?.code && !euMode && !flagsMode && (
+                {country && !customQuestions && !euMode && !flagsMode && (
                     <div className="quiz-map-wrapper">
                         <CarteMonde codeISO={country.code} />
                     </div>
                 )}
                 <form
                     className={`quiz-card ${typeParam === "input" ? "input-mode" : ""}`}
-                    onSubmit={multipleChoiceMode ? e => e.preventDefault() : handleSubmit}
+                    onSubmit={typeParam === "multiple" ? e => e.preventDefault() : handleSubmit}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
                     <h2>
-                        {euMode
-                            ? "Année d'adhésion à l'Union Européenne :"
-                            : flagsMode
-                                ? "Quel est ce pays ?"
-                                : "Devine la capitale de"}
+                        {customQuestions
+                            ? questionType === "capitale"
+                                ? `Devine la capitale de:`
+                                : questionType === "annee_eu"
+                                    ? `Année d'adhésion à l'Union Européenne : `
+                                    : `Quel est ce pays ?`
+                            : euMode ? "Année d'adhésion à l'Union Européenne :"
+                                : flagsMode ? "Quel est ce pays ?"
+                                    : "Devine la capitale de"}
                     </h2>
                     <div className="quiz-country">
-                        {flagsMode ? null : country?.name}
+                        {!customQuestions || questionType !== "drapeau" ? country?.name : null}
                     </div>
                     <div className="quiz-form">
-                        {euMode ? (
-                            multipleChoiceMode ? (
+                        {/* Questions sequence custom or classique */}
+                        {typeParam === "multiple"
+                            ? (
                                 <MultipleChoice
                                     options={mcOptions}
                                     onSelect={option => {
-                                        if (showCorrection) return;
-                                        const correct = country.ue_date && clean(option.value) === clean(country.ue_date.slice(0,4));
-                                        setLastAnswerCorrect(!!correct);
-                                        setAnswers(ans => [
-                                            ...ans,
-                                            {
-                                                country: country,
-                                                user: option.value,
-                                                isCorrect: !!correct,
-                                            }
-                                        ]);
-                                        if (correct) setScore(s => s + 1);
-                                        setShowCorrection(true);
+                                        if (showCorrection || !country) return;
+                                        let correct = false;
+                                        if (customQuestions) {
+                                            if (questionType === "capitale") correct = answerOk(option.value, country);
+                                            if (questionType === "drapeau") correct = answerCountryOk(option.value, country);
+                                            if (questionType === "annee_eu") correct = answerYearOk(option.value, country);
+                                            setLastAnswerCorrect(correct);
+                                            setAnswers(ans => [
+                                                ...ans,
+                                                { country, user: option.value, isCorrect: correct }
+                                            ]);
+                                            if (correct) setScore(s => s + 1);
+                                            setShowCorrection(true);
+                                            return;
+                                        } else {
+                                            if (euMode) correct = answerYearOk(option.value, country);
+                                            else if (flagsMode) correct = answerCountryOk(option.value, country);
+                                            else correct = answerOk(option.value, country);
+                                            setLastAnswerCorrect(correct);
+                                            setAnswers(ans => [
+                                                ...ans,
+                                                { country, user: option.value, isCorrect: correct }
+                                            ]);
+                                            if (correct) setScore(s => s + 1);
+                                            setShowCorrection(true);
+                                            return;
+                                        }
                                     }}
                                     disabled={showCorrection && lastAnswerCorrect}
-                                    selected={showAnswer}
+                                    selected={showCorrection ? answers[answers.length - 1]?.user : undefined}
                                     showCorrection={showCorrection}
-                                    correct={country.ue_date ? country.ue_date.slice(0,4) : undefined}
+                                    correct={country ? (
+                                        questionType === "capitale" ? country.capital :
+                                            questionType === "drapeau" ? country.name :
+                                                questionType === "annee_eu" ? country.ue_date?.slice(0, 4) : undefined
+                                    ) : undefined}
                                 />
-                            ) : (
+                            )
+                            : (
                                 <>
                                     <input
                                         ref={inputRef}
-                                        type="number"
-                                        inputMode="numeric"
+                                        type={questionType === "annee_eu" ? "number" : "text"}
+                                        inputMode={questionType === "annee_eu" ? "numeric" : "text"}
                                         value={userAnswer}
                                         onChange={e => setUserAnswer(e.target.value)}
                                         autoFocus
                                         className="quiz-input"
-                                        placeholder="Écris l'année (ex : 2004)"
+                                        placeholder={
+                                            questionType === "annee_eu" ? "Écris l'année (ex : 2004)" :
+                                                questionType === "drapeau" ? "Écris le nom du pays" :
+                                                    "Écris la capitale"
+                                        }
                                         disabled={showCorrection}
-                                        min={1950}
+                                        min={questionType === "annee_eu" ? 1950 : undefined}
                                     />
                                     {showCorrection ? null : (
                                         <button className="quiz-btn" type="submit">
@@ -328,93 +465,7 @@ export default function Quiz() {
                                     )}
                                 </>
                             )
-                        ) : flagsMode ? (
-                            multipleChoiceMode ? (
-                                <MultipleChoice
-                                    options={mcOptions}
-                                    onSelect={option => {
-                                        if (showCorrection) return;
-                                        const correct = clean(option.value) === clean(country.name);
-                                        setLastAnswerCorrect(correct);
-                                        setAnswers(ans => [
-                                            ...ans,
-                                            {
-                                                country: country,
-                                                user: option.value,
-                                                isCorrect: correct,
-                                            }
-                                        ]);
-                                        if (correct) setScore(s => s + 1);
-                                        setShowCorrection(true);
-                                    }}
-                                    disabled={showCorrection && lastAnswerCorrect}
-                                    selected={showAnswer}
-                                    showCorrection={showCorrection}
-                                    correct={country.name}
-                                />
-                            ) : (
-                                <>
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={userAnswer}
-                                        onChange={e => setUserAnswer(e.target.value)}
-                                        autoFocus
-                                        className="quiz-input"
-                                        placeholder="Écris le nom du pays"
-                                        disabled={showCorrection}
-                                    />
-                                    {showCorrection ? null : (
-                                        <button className="quiz-btn" type="submit">
-                                            Valider
-                                        </button>
-                                    )}
-                                </>
-                            )
-                        ) : (
-                            multipleChoiceMode ? (
-                                <MultipleChoice
-                                    options={mcOptions}
-                                    onSelect={option => {
-                                        if (showCorrection) return;
-                                        const correct = answerOk(option.value, country);
-                                        setLastAnswerCorrect(correct);
-                                        setAnswers(ans => [
-                                            ...ans,
-                                            {
-                                                country: country,
-                                                user: option.value,
-                                                isCorrect: correct,
-                                            }
-                                        ]);
-                                        if (correct) setScore(s => s + 1);
-                                        setShowCorrection(true);
-                                    }}
-                                    disabled={showCorrection && lastAnswerCorrect}
-                                    selected={showAnswer}
-                                    showCorrection={showCorrection}
-                                    correct={country.capital}
-                                />
-                            ) : (
-                                <>
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={userAnswer}
-                                        onChange={e => setUserAnswer(e.target.value)}
-                                        autoFocus
-                                        className="quiz-input"
-                                        placeholder="Écris la capitale"
-                                        disabled={showCorrection}
-                                    />
-                                    {showCorrection ? null : (
-                                        <button className="quiz-btn" type="submit">
-                                            Valider
-                                        </button>
-                                    )}
-                                </>
-                            )
-                        )}
+                        }
                         {showCorrection && (
                             <button
                                 ref={nextButtonRef}
@@ -423,20 +474,28 @@ export default function Quiz() {
                                 onClick={handleNext}
                                 tabIndex={0}
                             >
-                                {current === countries.length - 1 ? "Voir le résultat" : "Suivant"}
+                                {current === finishedLength - 1 ? "Voir le résultat" : "Suivant"}
                             </button>
                         )}
                     </div>
-                    <div className="quiz-index">{current + 1} / {countries.length}</div>
+                    <div className="quiz-index">{current + 1} / {finishedLength}</div>
                     {showCorrection && (
                         <div className={`quiz-correction ${lastAnswerCorrect ? "correct" : "wrong"}`}>
                             {lastAnswerCorrect
                                 ? "Bonne réponse ! 👏"
-                                : (euMode
-                                        ? <>Mauvaise réponse.<br />La bonne année était <b>{country.ue_date ? country.ue_date.slice(0,4) : "?"}</b></>
-                                        : flagsMode
-                                            ? <>Mauvaise réponse.<br />La bonne réponse était <b>{country.name}</b></>
-                                            : <>Mauvaise réponse.<br />La bonne réponse était <b>{country.capital}</b></>
+                                : (
+                                    customQuestions
+                                        ? questionType === "annee_eu"
+                                            ? <>Mauvaise réponse.<br />La bonne année était <b>{country?.ue_date?.slice(0, 4) || "?"}</b></>
+                                            : questionType === "drapeau"
+                                                ? <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.name}</b></>
+                                                : <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.capital}</b></>
+                                        : (euMode
+                                                ? <>Mauvaise réponse.<br />La bonne année était <b>{country?.ue_date ? country.ue_date.slice(0, 4) : "?"}</b></>
+                                                : flagsMode
+                                                    ? <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.name}</b></>
+                                                    : <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.capital}</b></>
+                                        )
                                 )}
                         </div>
                     )}

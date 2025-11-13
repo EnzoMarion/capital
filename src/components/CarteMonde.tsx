@@ -2,6 +2,7 @@ import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
 
 type TopoCountry = {
+    rsmKey: string;
     id: string;
     properties: { name: string; [key: string]: unknown; };
 };
@@ -21,7 +22,7 @@ export function CarteMonde({ codeISO }: { codeISO: string }) {
                             const isTarget = geo.id === codeISO.trim();
                             return (
                                 <Geography
-                                    key={geo.id}
+                                    key={`${geo.id}-${geo.rsmKey || ''}`}
                                     geography={geo}
                                     fill={isTarget ? "#ff7300" : "#D6D6DA"}
                                     stroke="#444"

@@ -5,14 +5,18 @@ import SelectMode from "./pages/SelectMode";
 import Quiz from "./pages/Quiz";
 import { AuthProvider } from "./context/AuthContext";
 import AuthStatusIcon from "./components/AuthStatusIcon.tsx";
+import BackButton from "./components/BackButton";
 import Login from "./pages/Login.tsx";
 import QuizEuType from "./pages/QuizEuType.tsx";
 import QuizFlagsType from "./pages/QuizFlagsType.tsx";
+import CreateQuiz from "./pages/CreateQuiz";
+import MyQuizzes from "./pages/MyQuizzes";
 
 function App() {
     return (
         <AuthProvider>
             <AuthStatusIcon />
+            <BackButton />
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/quiz-type" element={<QuizTypeSelect />} />
@@ -21,6 +25,8 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/quiz-eu-type" element={<QuizEuType />} />
                     <Route path="/quiz-flags-type" element={<QuizFlagsType />} />
+                    <Route path="/create-quiz" element={<CreateQuiz />} />
+                    <Route path="/my-quizzes" element={<MyQuizzes />} />
                 </Routes>
         </AuthProvider>
     );
