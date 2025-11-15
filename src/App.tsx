@@ -11,6 +11,7 @@ import QuizEuType from "./pages/QuizEuType.tsx";
 import QuizFlagsType from "./pages/QuizFlagsType.tsx";
 import CreateQuiz from "./pages/CreateQuiz";
 import MyQuizzes from "./pages/MyQuizzes";
+import EditQuiz from "./pages/EditQuiz";
 
 function App() {
     return (
@@ -27,6 +28,7 @@ function App() {
                     <Route path="/quiz-flags-type" element={<QuizFlagsType />} />
                     <Route path="/create-quiz" element={<CreateQuiz />} />
                     <Route path="/my-quizzes" element={<MyQuizzes />} />
+                    <Route path="/edit-quiz/:id" element={<EditQuiz />} />
                 </Routes>
         </AuthProvider>
     );

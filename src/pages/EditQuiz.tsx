@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../api/supabase";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../api/supabase";
 import { fetchCountries, type Country } from "../api/countries";
+
+type CustomQuestion = {
+    country_code: string;
+    country_name: string;
+    question_type: "capitale" | "drapeau" | "annee_eu";
+};
 
 const QUESTION_TYPES = [
     { key: "capitale", label: "Capitale" },
@@ -13,19 +19,21 @@ const CONTINENTS = [
     "Europe", "Asia", "Africa", "North America", "South America", "Oceania"
 ];
 
-export default function CreateQuiz() {
+export default function EditQuiz() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { id } = useParams<{ id: string }>();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [inputType, setInputType] = useState<"multiple"|"input">("multiple");
-    const [selectedQuestions, setSelectedQuestions] = useState<any[]>([]);
+    const [inputType, setInputType] = useState<"multiple" | "input">("multiple");
+    const [selectedQuestions, setSelectedQuestions] = useState<CustomQuestion[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [allCountries, setAllCountries] = useState<Country[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [continentFilter, setContinentFilter] = useState<string[]>([]);
     const [search, setSearch] = useState("");
 
+    // Chargement pays
     useEffect(() => {
         fetchCountries()
             .then(data => setAllCountries(data))
@@ -33,7 +41,30 @@ export default function CreateQuiz() {
             .finally(() => setLoading(false));
     }, []);
 
-    function toggleQuestion(country_code: string, country_name: string, type: string) {
+    // Chargement quiz à éditer
+    useEffect(() => {
+        if (!user || !id) return;
+        supabase.from("quizzes").select("*").eq("id", id).single()
+            .then(({ data, error }) => {
+                if (error) setError("Erreur de chargement du quiz.");
+                if (data) {
+                    setTitle(data.title || "");
+                    setDescription(data.description || "");
+                    let settingsObj = data.settings;
+                    if (typeof settingsObj === "string") {
+                        try {
+                            settingsObj = JSON.parse(settingsObj);
+                        } catch {
+                            // ignore parse error; settingsObj remains as is
+                        }
+                    }
+                    setInputType(settingsObj?.inputType === "input" ? "input" : "multiple");
+                    setSelectedQuestions(Array.isArray(settingsObj.questions) ? settingsObj.questions : []);
+                }
+            });
+    }, [user, id]);
+
+    function toggleQuestion(country_code: string, country_name: string, type: CustomQuestion["question_type"]) {
         const index = selectedQuestions.findIndex(
             q => q.country_code === country_code && q.question_type === type
         );
@@ -46,20 +77,31 @@ export default function CreateQuiz() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!user || !selectedQuestions.length) return;
+        setError(null);
+        if (!user || !selectedQuestions.length || !id) {
+            setError("Formulaire incomplet.");
+            return;
+        }
         const settings = {
             questions: selectedQuestions,
             mode: "custom_sequence",
-            inputType, // très important pour type du quiz !
+            inputType,
         };
-        const { error } = await supabase.from("quizzes").insert([
-            { user_id: user.id, title, description, settings }
-        ]);
-        if (!error) navigate("/my-quizzes");
-        else setError("Erreur création quiz");
+        // Pour SQL UUID reste string, pour int cast possible:
+        let parsedId: string | number = id;
+        if (!isNaN(Number(id))) parsedId = Number(id);
+
+        const { error: updateError } = await supabase.from("quizzes")
+            .update({ title, description, settings })
+            .eq("id", parsedId);
+        if (!updateError) {
+            navigate("/my-quizzes");
+        } else {
+            setError("Erreur modification quiz : " + updateError.message);
+        }
     }
 
-    // Filtrage côté dashboard
+    // Filtrage dashboard
     let filtered = allCountries;
     if (continentFilter.length > 0) {
         filtered = filtered.filter(c => continentFilter.includes(c.continent));
@@ -72,7 +114,7 @@ export default function CreateQuiz() {
 
     return (
         <form className="quiz-card input-mode quiz-create-form" onSubmit={handleSubmit}>
-            <h2 className="quiz-create-h2">Créer un quiz personnalisé</h2>
+            <h2 className="quiz-create-h2">Modifier mon quiz</h2>
             <div className="quiz-create-titlebox">
                 <input
                     required
@@ -93,14 +135,14 @@ export default function CreateQuiz() {
                 <label>
                     <input type="radio" name="quiz-type"
                            checked={inputType === "multiple"}
-                           onChange={()=>setInputType("multiple")}
+                           onChange={() => setInputType("multiple")}
                     />
                     QCM
                 </label>
                 <label>
                     <input type="radio" name="quiz-type"
                            checked={inputType === "input"}
-                           onChange={()=>setInputType("input")}
+                           onChange={() => setInputType("input")}
                     />
                     Saisie
                 </label>
@@ -149,7 +191,7 @@ export default function CreateQuiz() {
                                         type="checkbox"
                                         className="quiz-create-checkbox"
                                         checked={!!selectedQuestions.find(q => q.country_code === c.code && q.question_type === qt.key)}
-                                        onChange={() => toggleQuestion(c.code, c.name, qt.key)}
+                                        onChange={() => toggleQuestion(c.code, c.name, qt.key as CustomQuestion["question_type"])}
                                         disabled={qt.key === "annee_eu" && !c.ue_date}
                                     />
                                 </td>
@@ -161,7 +203,7 @@ export default function CreateQuiz() {
             </div>
             <div className="quiz-create-error">{error}</div>
             <button type="submit" className="quiz-create-btn">
-                Créer mon quiz vraiment personnalisé !
+                Sauvegarder les modifications
             </button>
         </form>
     );

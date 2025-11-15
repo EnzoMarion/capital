@@ -63,14 +63,13 @@ export default function Quiz() {
     const [mcOptions, setMCOptions] = useState<MultipleChoiceOption[]>([]);
     const [quizLoaded, setQuizLoaded] = useState(false);
     const [customQuestions, setCustomQuestions] = useState<CustomQuestion[] | null>(null);
-    const [allCountries, setAllCountries] = useState<Country[]>([]); // tableau complet pour lookup code => objet
+    const [allCountries, setAllCountries] = useState<Country[]>([]);
 
     const location = useLocation();
     useNavigate();
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    // Use quiz_id (custom quiz) ou fallback sur les params d'URL classiques
     const query = new URLSearchParams(location.search);
     const quizId = query.get("quiz_id");
 
@@ -82,7 +81,7 @@ export default function Quiz() {
     const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
     const [numQuestions, setNumQuestions] = useState<number>(99999);
 
-    // 1. Config quiz : charge custom sequence OU standard via url
+    // Config quiz : charge custom sequence OU standard via url
     useEffect(() => {
         if (!quizId) {
             // Mode standard via URL
@@ -104,6 +103,7 @@ export default function Quiz() {
                 if (data && data.settings) {
                     if (data.settings.mode === "custom_sequence" && Array.isArray(data.settings.questions)) {
                         setCustomQuestions(data.settings.questions);
+                        setTypeParam(data.settings.inputType || "multiple"); // <-- respecte le type (QCM/saisie)
                         const pays = await fetchCountries();
                         setAllCountries(pays);
                         setQuizLoaded(true);
@@ -122,7 +122,7 @@ export default function Quiz() {
             });
     }, [location.search, quizId]);
 
-    // 2. Pour les quiz classiques, charge les pays filtrés
+    // Pour les quiz classiques, charge les pays filtrés
     useEffect(() => {
         if (!quizLoaded || customQuestions) return;
         fetchCountries(selectedContinents.length ? selectedContinents : undefined)
@@ -151,13 +151,10 @@ export default function Quiz() {
                 }
                 setCountries(filtered);
             })
-            .catch(e => {
-                console.error(e);
-                setCountries([]);
-            });
+            .catch(() => setCountries([]));
     }, [selectedContinents, showTerritories, onlyTerritories, euMode, flagsMode, numQuestions, quizLoaded, customQuestions]);
 
-    // 3. Gestion MCQ pour mode classique
+    // Gestion MCQ pour mode classique
     useEffect(() => {
         if (!countries.length || current >= countries.length || customQuestions) return;
         if (typeParam === "multiple") {
@@ -177,14 +174,13 @@ export default function Quiz() {
         }
     }, [typeParam, flagsMode, euMode, countries, current, customQuestions]);
 
-    // 4. Gestion MCQ pour mode custom_sequence
+    // Gestion MCQ pour mode custom_sequence
     useEffect(() => {
         if (!customQuestions || !allCountries.length || current >= customQuestions.length) return;
         const q = customQuestions[current];
         const country = allCountries.find(c => c.code === q.country_code);
         if (!country) return;
         if (q.question_type === "capitale" && typeParam === "multiple") {
-            // MCQ sur capitale
             const correctCapital = country.capital;
             const allCapitals = uniq(allCountries.map(c => c.capital).filter(Boolean));
             setMCOptions(getMCOptions(correctCapital, allCapitals));
@@ -233,16 +229,11 @@ export default function Quiz() {
             setLastAnswerCorrect(correct);
             setAnswers(ans => [
                 ...ans,
-                {
-                    country: country,
-                    user: userAnswer,
-                    isCorrect: correct
-                }
+                { country, user: userAnswer, isCorrect: correct }
             ]);
             if (correct) setScore(s => s + 1);
             setShowCorrection(true);
         } else {
-            // quiz classique
             let correct = false;
             if (euMode) correct = answerYearOk(userAnswer, countries[current]);
             else if (flagsMode) correct = answerCountryOk(userAnswer, countries[current]);
@@ -250,11 +241,7 @@ export default function Quiz() {
             setLastAnswerCorrect(correct);
             setAnswers(ans => [
                 ...ans,
-                {
-                    country: countries[current],
-                    user: userAnswer,
-                    isCorrect: correct
-                }
+                { country: countries[current], user: userAnswer, isCorrect: correct }
             ]);
             if (correct) setScore(s => s + 1);
             setShowCorrection(true);
@@ -293,9 +280,6 @@ export default function Quiz() {
         );
     }
 
-    // =====================
-    // RENDER
-    // =====================
     if (!quizLoaded || (customQuestions && !allCountries.length)) return <p>Chargement…</p>;
 
     const finishedLength = customQuestions ? customQuestions.length : countries.length;
@@ -351,7 +335,7 @@ export default function Quiz() {
         );
     }
 
-    // -- Quelle question on affiche ? --
+    // Quelle question on affiche ?
     let questionType = "capitale", country: Country | undefined;
     if (customQuestions) {
         const q = customQuestions[current];
@@ -361,11 +345,10 @@ export default function Quiz() {
         country = countries[current];
     }
 
-    // -- Si sequence personnalisée --
     return (
         <div className="quiz-main-wrapper">
             <div className="quiz-content-inner">
-                {country && questionType === "drapeau" && (
+                {(country && ((customQuestions && questionType === "drapeau") || (!customQuestions && flagsMode))) && (
                     <div className="flag-wrapper">
                         <Flag code={country.code} />
                     </div>
@@ -393,10 +376,9 @@ export default function Quiz() {
                                     : "Devine la capitale de"}
                     </h2>
                     <div className="quiz-country">
-                        {!customQuestions || questionType !== "drapeau" ? country?.name : null}
+                        {(!customQuestions && !flagsMode) || (customQuestions && questionType !== "drapeau") ? country?.name : null}
                     </div>
                     <div className="quiz-form">
-                        {/* Questions sequence custom or classique */}
                         {typeParam === "multiple"
                             ? (
                                 <MultipleChoice

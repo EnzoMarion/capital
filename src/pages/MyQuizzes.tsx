@@ -15,20 +15,46 @@ export default function MyQuizzes() {
             .then(({ data }) => setQuizzes(data || []));
     }, [user]);
 
+    async function handleDelete(id: string) {
+        if (!window.confirm("Supprimer ce quiz ?")) return;
+        const { error } = await supabase.from("quizzes").delete().eq("id", id);
+        if (!error) setQuizzes(qs => qs.filter(q => q.id !== id));
+    }
+
     if (!user) return <p>Connecte-toi !</p>;
     if (!quizzes.length) return <p>Tu n’as créé aucun quiz personnalisé.</p>;
 
     return (
-        <div className="quiz-card input-mode" style={{maxWidth:580,margin:"auto"}}>
-            <h2>Mes quiz personnalisés</h2>
-            <ul style={{display:'flex',flexDirection:'column',gap:30}}>
-                {quizzes.map(q => (
-                    <li key={q.id} style={{borderBottom:'1px solid #444',paddingBottom:10}}>
-                        <strong>{q.title}</strong>
-                        <div style={{color:'#ddd',marginBottom:8}}>{q.description}</div>
-                        <button style={{marginRight:14}} onClick={()=>navigate(`/quiz?quiz_id=${q.id}`)}>Lancer ce quiz</button>
-                    </li>
-                ))}
+        <div className="quiz-card input-mode quizzes-list">
+            <h2 className="quizzes-title">Mes quiz personnalisés</h2>
+            <ul className="quizzes-ul">
+                {quizzes.map(q => {
+                    let settingsObj = q.settings;
+                    if (typeof settingsObj === "string") {
+                        try { settingsObj = JSON.parse(settingsObj); } catch {}
+                    }
+                    let inputTypeLabel = "";
+                    if (settingsObj?.inputType === "multiple") inputTypeLabel = "QCM";
+                    else if (settingsObj?.inputType === "input") inputTypeLabel = "Saisie";
+
+                    return (
+                        <li key={q.id} className="quizzes-li">
+                            <strong className="quizzes-li-title">{q.title}</strong>
+                            <div className="quizzes-li-desc">{q.description}</div>
+                            <div className="quizzes-li-actions">
+                                <button className="quizzes-li-btn" onClick={()=>navigate(`/quiz?quiz_id=${q.id}`)}>
+                                    {inputTypeLabel || "Lancer ce quiz"}
+                                </button>
+                                <button className="quizzes-li-edit" onClick={() => navigate(`/edit-quiz/${q.id}`)}>
+                                    Modifier
+                                </button>
+                                <button className="quizzes-li-delete" onClick={()=>handleDelete(q.id)}>
+                                    Supprimer
+                                </button>
+                            </div>
+                        </li>
+                    );
+                })}
             </ul>
         </div>
     );
