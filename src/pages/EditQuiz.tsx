@@ -75,6 +75,39 @@ export default function EditQuiz() {
         }
     }
 
+    async function handleDeleteQuiz() {
+        setError(null);
+        if (!id) return;
+        if (!window.confirm("Supprimer définitivement ce quiz ?")) return;
+
+        let parsedId: string | number = id;
+        if (!isNaN(Number(id))) parsedId = Number(id);
+
+        // Debug: On vérifie d'abord si le quiz existe pour ce user
+        const { data: quizExists, error: existErr } = await supabase.from("quizzes")
+            .select("id, user_id")
+            .eq("id", parsedId);
+
+        if (existErr) {
+            setError("Erreur lecture quiz : " + existErr.message);
+            return;
+        }
+        if (!quizExists || quizExists.length === 0) {
+            setError("Ce quiz n'existe pas ou n'est pas à vous.");
+            return;
+        }
+
+        // Action delete réelle
+        const { error: deleteError } = await supabase.from("quizzes")
+            .delete()
+            .eq("id", parsedId);
+        if (deleteError) {
+            setError("Erreur suppression quiz : " + deleteError.message);
+        } else {
+            navigate("/my-quizzes");
+        }
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
@@ -87,7 +120,6 @@ export default function EditQuiz() {
             mode: "custom_sequence",
             inputType,
         };
-        // Pour SQL UUID reste string, pour int cast possible:
         let parsedId: string | number = id;
         if (!isNaN(Number(id))) parsedId = Number(id);
 
@@ -202,9 +234,17 @@ export default function EditQuiz() {
                 </table>
             </div>
             <div className="quiz-create-error">{error}</div>
-            <button type="submit" className="quiz-create-btn">
-                Sauvegarder les modifications
-            </button>
+            <div style={{display:"flex",gap:15,marginTop:18,justifyContent:"space-between"}}>
+                <button type="button"
+                        className="quiz-delete-btn"
+                        style={{background:"#e74c3c",color:"#fff"}}
+                        onClick={handleDeleteQuiz}>
+                    Supprimer ce quiz
+                </button>
+                <button type="submit" className="quiz-create-btn">
+                    Sauvegarder les modifications
+                </button>
+            </div>
         </form>
     );
 }
