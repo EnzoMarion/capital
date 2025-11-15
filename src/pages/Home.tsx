@@ -9,6 +9,7 @@ export default function Home() {
                 <button onClick={() => navigate("/quiz-type")}>Mode Capitales</button>
                 <button onClick={() => navigate("/quiz-eu-type")}>Mode UE (Année d'entrée)</button>
                 <button onClick={() => navigate("/quiz-flags-type")}>Mode Drapeaux</button>
+                <button onClick={() => navigate("/revision")} className="revision-btn">Mode Révision</button>
             </div>
             <div className="home-extras">
                 <button

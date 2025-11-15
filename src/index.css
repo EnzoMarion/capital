@@ -24,7 +24,7 @@
   /* Shadows */
   --shadow-gold: 0 6px 20px rgba(247, 201, 72, 0.35);
   --shadow-purple: 0 3px 15px rgba(100, 108, 255, 0.25);
-  --shadow-combined: 0 6px 20px rgba(247, 201, 72, 0.35), 0 3px 15px rgba(100, 108, 255, 0.25);
+  --shadow-combined: 0 6px 20px rgba(41, 39, 38, 0.35), 0 3px 15px rgba(100, 108, 255, 0.25);
   --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.5);
 
   /* Spacing & Typography */
@@ -506,15 +506,14 @@ a:hover { color: var(--color-gold); }
   border: 2px solid #e0e0e0;
 }
 .flag-fallback {
-  display: inline-block;
-  width: 120px;
-  height: 80px;
-  background: #f3f3f8;
-  border-radius: 11px;
+  font-size: 1.4em;
   color: #aaa;
-  line-height: 80px;
-  text-align: center;
-  font-size: 2.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 /* ========== RECAP ========== */
@@ -681,7 +680,7 @@ a:hover { color: var(--color-gold); }
 }
 
 body, .quiz-main-wrapper, .quiz-result-wrapper, .home-wrapper {
-  padding-left: 85px;
+  padding-left: 100px;
 }
 
 @media (max-width: 900px){
@@ -993,4 +992,104 @@ body, .quiz-main-wrapper, .quiz-result-wrapper, .home-wrapper {
 .quizzes-li-delete:hover {
   background: #c80d00;
 }
-
+.revision-wrapper {
+  max-width: 90%;
+  margin: 0 auto 2.5rem;
+  padding: 0 1rem;
+}
+.revision-title {
+  margin: 2rem 0 1rem 0;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.revision-search {
+  display: block;
+  margin: 0 auto 2rem auto;
+  width: 100%;
+  max-width: 500px;
+  padding: 0.6em 1.2em;
+  border-radius: 10px;
+  border: 1px solid #23232e;
+  background: #161624;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.revision-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 25px;
+}
+.revision-card {
+  margin-top: 20px;
+  background: #20213aee;
+  border-radius: 14px;
+  box-shadow: 0 4px 15px 0 rgba(103,104,255,.10);
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 9px;
+}
+.revision-flag {
+  flex-shrink: 0;
+  width: 56px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.revision-flag-img {
+  width: 52px;
+  height: 32px;
+  border-radius: 5px;
+  box-shadow: 0 1px 5px #25254325;
+  border: 1px solid #232346;
+}
+.revision-info {
+  flex: 1;
+  min-width: 0;
+}
+.revision-country, .revision-capital, .revision-code, .revision-ue {
+  font-size: 0.98rem;
+  margin-bottom: 2px;
+}
+.label {
+  color: #F7C948;
+  font-weight: 600;
+  font-size: 1.01em;
+  margin-right: .5em;
+}
+.flag-fallback {
+  font-size: 1.4em;
+  color: #aaa;
+}
+.accordion-title {
+  background: none;
+  border: none;
+  color: #F7C948;
+  font-size: 1.23rem;
+  font-weight: 700;
+  width: 100%;
+  text-align: left;
+  padding: 14px 0 6px 7px;
+  margin: 0;
+  cursor: pointer;
+  transition: color 0.18s;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.accordion-title.open {
+  color: #fff8e1;
+  background: none;
+}
+.revision-section-count {
+  color: #bababa;
+  font-size: 0.99em;
+  margin-left: 1em;
+  font-weight: 500;
+}
+.revision-section{
+  padding-bottom: 20px;
+}
