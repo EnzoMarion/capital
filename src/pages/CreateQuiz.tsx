@@ -1,168 +1,59 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../api/supabase";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { fetchCountries, type Country } from "../api/countries";
-
-const QUESTION_TYPES = [
-    { key: "capitale", label: "Capitale" },
-    { key: "drapeau", label: "Drapeau" },
-    { key: "annee_eu", label: "Année UE" }
-];
-const CONTINENTS = [
-    "Europe", "Asia", "Africa", "North America", "South America", "Oceania"
-];
+import { supabase } from "../api/supabase";
+import CustomQuizBuilder from "../components/CustomQuizBuilder";
+import type { CustomQuestion } from "../utils/customQuizModes";
 
 export default function CreateQuiz() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [inputType, setInputType] = useState<"multiple"|"input">("multiple");
-    const [selectedQuestions, setSelectedQuestions] = useState<any[]>([]);
+    const [inputType, setInputType] = useState<"multiple" | "input">("multiple");
+    const [selectedQuestions, setSelectedQuestions] = useState<CustomQuestion[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [allCountries, setAllCountries] = useState<Country[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [continentFilter, setContinentFilter] = useState<string[]>([]);
-    const [search, setSearch] = useState("");
+    const [saving, setSaving] = useState(false);
 
-    useEffect(() => {
-        fetchCountries()
-            .then(data => setAllCountries(data))
-            .catch(() => setAllCountries([]))
-            .finally(() => setLoading(false));
-    }, []);
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setError(null);
+        if (!user) { setError("Connecte-toi pour enregistrer un quiz."); return; }
+        if (!title.trim()) { setError("Ajoute un titre à ton quiz."); return; }
+        if (!selectedQuestions.length) { setError("Sélectionne au moins une question."); return; }
 
-    function toggleQuestion(country_code: string, country_name: string, type: string) {
-        const index = selectedQuestions.findIndex(
-            q => q.country_code === country_code && q.question_type === type
-        );
-        if (index >= 0) {
-            setSelectedQuestions(sq => sq.filter((_, i) => i !== index));
-        } else {
-            setSelectedQuestions(sq => [...sq, { country_code, question_type: type, country_name }]);
+        setSaving(true);
+        try {
+            const { error: insertError } = await supabase.from("quizzes").insert([{
+                user_id: user.id,
+                title: title.trim(),
+                description: description.trim(),
+                settings: { questions: selectedQuestions, mode: "custom_sequence", inputType },
+            }]);
+            if (insertError) setError("Le quiz n’a pas pu être créé. Réessaie.");
+            else navigate("/#mes-quiz");
+        } catch {
+            setError("Connexion impossible. Le quiz n’a pas pu être créé.");
+        } finally {
+            setSaving(false);
         }
     }
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        if (!user || !selectedQuestions.length) return;
-        const settings = {
-            questions: selectedQuestions,
-            mode: "custom_sequence",
-            inputType, // très important pour type du quiz !
-        };
-        const { error } = await supabase.from("quizzes").insert([
-            { user_id: user.id, title, description, settings }
-        ]);
-        if (!error) navigate("/my-quizzes");
-        else setError("Erreur création quiz");
-    }
-
-    // Filtrage côté dashboard
-    let filtered = allCountries;
-    if (continentFilter.length > 0) {
-        filtered = filtered.filter(c => continentFilter.includes(c.continent));
-    }
-    if (search.length > 0) {
-        filtered = filtered.filter(c =>
-            c.name.toLowerCase().includes(search.toLowerCase())
-        );
-    }
-
     return (
-        <form className="quiz-card input-mode quiz-create-form" onSubmit={handleSubmit}>
-            <h2 className="quiz-create-h2">Créer un quiz personnalisé</h2>
-            <div className="quiz-create-titlebox">
-                <input
-                    required
-                    className="quiz-create-title"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    placeholder="Titre du quiz"
-                />
-                <input
-                    className="quiz-create-desc"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="Description (optionnelle)"
-                />
-            </div>
-            <div className="quiz-create-typebox">
-                <span>Type de réponse :</span>
-                <label>
-                    <input type="radio" name="quiz-type"
-                           checked={inputType === "multiple"}
-                           onChange={()=>setInputType("multiple")}
-                    />
-                    QCM
-                </label>
-                <label>
-                    <input type="radio" name="quiz-type"
-                           checked={inputType === "input"}
-                           onChange={()=>setInputType("input")}
-                    />
-                    Saisie
-                </label>
-            </div>
-            <div className="quiz-create-toolbar">
-                <span>Filtrer :</span>
-                <div className="quiz-create-filters">
-                    {CONTINENTS.map(c => (
-                        <label key={c}>
-                            <input type="checkbox" checked={continentFilter.includes(c)} onChange={(e) => {
-                                setContinentFilter(cf => e.target.checked ? [...cf, c] : cf.filter(cc => cc !== c));
-                            }}/>
-                            {c}
-                        </label>
-                    ))}
-                </div>
-                <input
-                    type="text"
-                    className="quiz-create-search"
-                    placeholder="Recherche pays…"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                />
-            </div>
-            <div className="quiz-create-section">
-                <table className="quiz-create-table">
-                    <thead>
-                    <tr>
-                        <th>Pays</th>
-                        {QUESTION_TYPES.map(qt => (
-                            <th key={qt.key}>{qt.label}</th>
-                        ))}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {loading ? (
-                        <tr><td colSpan={1+QUESTION_TYPES.length} className="quiz-create-loading">Chargement…</td></tr>
-                    ) : filtered.length === 0 ? (
-                        <tr><td colSpan={1+QUESTION_TYPES.length} className="quiz-create-empty">Aucun pays</td></tr>
-                    ) : filtered.map(c => (
-                        <tr key={`${c.code}-${c.name}`}>
-                            <td>{c.name}</td>
-                            {QUESTION_TYPES.map(qt => (
-                                <td key={`${c.code}-${c.name}-${qt.key}`}>
-                                    <input
-                                        type="checkbox"
-                                        className="quiz-create-checkbox"
-                                        checked={!!selectedQuestions.find(q => q.country_code === c.code && q.question_type === qt.key)}
-                                        onChange={() => toggleQuestion(c.code, c.name, qt.key)}
-                                        disabled={qt.key === "annee_eu" && !c.ue_date}
-                                    />
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="quiz-create-error">{error}</div>
-            <button type="submit" className="quiz-create-btn">
-                Créer mon quiz vraiment personnalisé !
-            </button>
+        <form className="quiz-card input-mode quiz-create-form custom-quiz-page" onSubmit={handleSubmit}>
+            <CustomQuizBuilder
+                title={title} setTitle={setTitle}
+                description={description} setDescription={setDescription}
+                inputType={inputType} setInputType={setInputType}
+                selectedQuestions={selectedQuestions} setSelectedQuestions={setSelectedQuestions}
+            />
+            {error && <p className="quiz-create-error" role="alert">{error}</p>}
+            <footer className="custom-builder-footer">
+                <span>{selectedQuestions.length} question{selectedQuestions.length === 1 ? "" : "s"} dans le quiz</span>
+                <button type="submit" className="quiz-create-btn" disabled={saving}>
+                    {saving ? "Enregistrement…" : "Créer mon quiz"}
+                </button>
+            </footer>
         </form>
     );
 }

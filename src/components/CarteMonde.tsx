@@ -7,15 +7,18 @@ type TopoCountry = {
     properties: { name: string; [key: string]: unknown; };
 };
 
-export function CarteMonde({ codeISO }: { codeISO: string }) {
+export function CarteMonde({ codeISO, region = "world" }: { codeISO: string; region?: "world" | "europe" }) {
+    const europeOnly = region === "europe";
     return (
         <div className="carte-fullscreen-stack">
             <ComposableMap
-                projectionConfig={{ scale: 160 }}
-                width={1100}
-                height={400}
-                className="carte-map"
+                projection={europeOnly ? "geoMercator" : "geoEqualEarth"}
+                projectionConfig={europeOnly ? { center: [18, 53], scale: 540 } : { scale: 155 }}
+                width={1000}
+                height={europeOnly ? 650 : 420}
+                className={`carte-map ${europeOnly ? "europe-map" : "world-map"}`}
             >
+                <title>{europeOnly ? "Carte de l’Europe" : "Carte du monde"}</title>
                 <Geographies geography={geoUrl}>
                     {({ geographies }: { geographies: TopoCountry[] }) =>
                         geographies.map((geo) => {
@@ -24,14 +27,14 @@ export function CarteMonde({ codeISO }: { codeISO: string }) {
                                 <Geography
                                     key={`${geo.id}-${geo.rsmKey || ''}`}
                                     geography={geo}
-                                    fill={isTarget ? "#ff7300" : "#D6D6DA"}
-                                    stroke="#444"
+                                    fill={isTarget ? "#F7C948" : europeOnly ? "#D9D7F7" : "#D6D6DA"}
+                                    stroke={europeOnly ? "#fffefa" : "#444"}
                                     style={{
                                         default: { outline: "none" },
                                         hover: {
                                             outline: "none",
                                             filter: isTarget
-                                                ? "drop-shadow(0 0 8px #ff7300aa)"
+                                                ? "drop-shadow(0 0 8px #F7C948aa)"
                                                 : "drop-shadow(0 0 7px #646cff88)",
                                         },
                                         pressed: { outline: "none" }

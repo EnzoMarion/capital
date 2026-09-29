@@ -1,12 +1,17 @@
 import { useEffect, useState, useRef } from "react";
 import { fetchCountries } from "../api/countries";
 import type { Country } from "../api/countries";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { CarteMonde } from "../components/CarteMonde";
+import { CarteFranceDept } from "../components/CarteFranceDept";
 import MultipleChoice, { type MultipleChoiceOption } from "../components/MultipleChoice";
 import { capitalVariantsMap } from "../utils/capitalVariants";
 import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
 import { supabase } from "../api/supabase";
+import { useAuth } from "../context/AuthContext";
+import { getCustomAnswerValue, getCustomQuestionMode, type CustomQuestionType } from "../utils/customQuizModes";
+import { recordCountryProgress, useQuizAttemptSave } from "../api/quizAttempts";
+import QuizAttemptStatus from "../components/QuizAttemptStatus";
 
 function shuffle<T>(array: T[]): T[] {
     const arr = array.slice();
@@ -40,16 +45,39 @@ function answerCountryOk(userInput: string, country: Country) {
     return clean(userInput) === clean(country.name);
 }
 type Answer = {
-    country: Country;
+    country?: Country;
+    department?: FranceDepartment;
     user: string;
     isCorrect: boolean;
+    questionType: CustomQuestionType;
 };
 
 type CustomQuestion = {
-    country_code: string;
-    country_name: string;
-    question_type: "capitale" | "drapeau" | "annee_eu";
+    country_code?: string;
+    country_name?: string;
+    department_code?: string;
+    department_name?: string;
+    question_type: CustomQuestionType;
 };
+
+type FranceDepartment = { code: string; nom: string; cheflieu: string; region: string | null };
+const CONTINENT_LABELS: Record<string, string> = {
+    Europe: "Europe",
+    Asia: "Asie",
+    Africa: "Afrique",
+    "North America": "Amérique du Nord",
+    "South America": "Amérique du Sud",
+    Oceania: "Océanie",
+};
+
+function customAnswerValue(questionType: CustomQuestionType, subject: Country | FranceDepartment) {
+    const mode = getCustomQuestionMode(questionType);
+    return mode ? getCustomAnswerValue(mode, subject) : "";
+}
+
+function customPrompt(questionType: CustomQuestionType) {
+    return getCustomQuestionMode(questionType)?.prompt ?? "Réponds à la question :";
+}
 
 export default function Quiz() {
     const [countries, setCountries] = useState<Country[]>([]);
@@ -60,13 +88,18 @@ export default function Quiz() {
     const [showCorrection, setShowCorrection] = useState(false);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [lastAnswerCorrect, setLastAnswerCorrect] = useState<boolean>(false);
+    const [countryProgressSaveError, setCountryProgressSaveError] = useState(false);
     const [mcOptions, setMCOptions] = useState<MultipleChoiceOption[]>([]);
     const [quizLoaded, setQuizLoaded] = useState(false);
+    const [countriesLoading, setCountriesLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [customQuestions, setCustomQuestions] = useState<CustomQuestion[] | null>(null);
+    const [customQuizTitle, setCustomQuizTitle] = useState("");
     const [allCountries, setAllCountries] = useState<Country[]>([]);
+    const [allDepartments, setAllDepartments] = useState<FranceDepartment[]>([]);
 
     const location = useLocation();
-    useNavigate();
+    const { user } = useAuth();
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -81,8 +114,55 @@ export default function Quiz() {
     const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
     const [numQuestions, setNumQuestions] = useState<number>(99999);
 
+    const personalQuizKey = customQuestions ? "personnalise" : euMode ? "union_europeenne" : flagsMode ? "drapeaux" : "capitales_monde";
+    const personalQuizTotal = customQuestions ? customQuestions.length : countries.length;
+    const orderedContinents = [...selectedContinents].sort();
+    const personalQuizScopeParts = [
+        orderedContinents.length ? orderedContinents.map(code => CONTINENT_LABELS[code] ?? code).join(", ") : "Tous les continents",
+        ...(onlyTerritories ? ["Territoires uniquement"] : showTerritories ? ["Avec territoires"] : []),
+        ...(numQuestions === 99999 ? [] : [`${numQuestions} questions`]),
+    ];
+    const personalQuizScopeKey = customQuestions
+        ? `quiz:${quizId ?? "personnalise"}`
+        : `continents:${orderedContinents.join(",") || "tous"}|territoires:${onlyTerritories ? "uniquement" : showTerritories ? "inclus" : "exclus"}|questions:${numQuestions}`;
+    const personalQuizScopeLabel = customQuestions
+        ? customQuizTitle || "Quiz personnalisé"
+        : personalQuizScopeParts.join(" · ");
+    const attemptSave = useQuizAttemptSave({
+        enabled: finished && personalQuizTotal > 0,
+        userId: user?.id,
+        quizKey: personalQuizKey,
+        score,
+        totalQuestions: personalQuizTotal,
+        scopeKey: personalQuizScopeKey,
+        scopeLabel: personalQuizScopeLabel,
+    });
+    const countryProgressSaveKey = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!finished || !user?.id || customQuestions || flagsMode || euMode) return;
+        const progressAnswers = answers.flatMap(answer =>
+            answer.country && answer.questionType === "capitale"
+                ? [{ countryCode: answer.country.code, isCorrect: answer.isCorrect }]
+                : [],
+        );
+        if (!progressAnswers.length) return;
+
+        const saveKey = JSON.stringify([user.id, progressAnswers]);
+        if (countryProgressSaveKey.current === saveKey) return;
+        countryProgressSaveKey.current = saveKey;
+        void recordCountryProgress(user.id, progressAnswers)
+            .then(() => setCountryProgressSaveError(false))
+            .catch((error: unknown) => {
+                console.error("Échec de l’enregistrement de la progression par pays.", error);
+                countryProgressSaveKey.current = null;
+                setCountryProgressSaveError(true);
+            });
+    }, [answers, customQuestions, euMode, finished, flagsMode, user?.id]);
+
     // Config quiz : charge custom sequence OU standard via url
     useEffect(() => {
+        let active = true;
         if (!quizId) {
             // Mode standard via URL
             setFlagsMode(query.get("flags") === "1");
@@ -95,41 +175,94 @@ export default function Quiz() {
             setSelectedContinents(continentsParam ? continentsParam.split(",") : []);
             setQuizLoaded(true);
             setCustomQuestions(null);
-            return;
+            setCustomQuizTitle("");
+            setCountriesLoading(true);
+            setLoadError(null);
+            return () => { active = false; };
+        }
+        if (!user) {
+            setLoadError("Connecte-toi pour accéder à ce quiz personnalisé.");
+            return () => { active = false; };
         }
         setQuizLoaded(false);
-        supabase.from("quizzes").select("settings").eq("id", quizId).single()
-            .then(async ({ data }) => {
-                if (data && data.settings) {
-                    if (data.settings.mode === "custom_sequence" && Array.isArray(data.settings.questions)) {
-                        setCustomQuestions(data.settings.questions);
-                        setTypeParam(data.settings.inputType || "multiple"); // <-- respecte le type (QCM/saisie)
-                        const pays = await fetchCountries();
-                        setAllCountries(pays);
-                        setQuizLoaded(true);
-                    } else {
-                        setFlagsMode(data.settings.mode === "flags");
-                        setEuMode(data.settings.mode === "eu");
-                        setTypeParam(data.settings.inputType || "multiple");
-                        setOnlyTerritories(!!data.settings.onlyTerritories);
-                        setShowTerritories(!!data.settings.withTerritories);
-                        setNumQuestions(Number(data.settings.numQuestions ?? 99999));
-                        setSelectedContinents(data.settings.continents ?? []);
-                        setCustomQuestions(null);
-                        setQuizLoaded(true);
-                    }
+        setCountriesLoading(true);
+        setAllCountries([]);
+        setAllDepartments([]);
+        setLoadError(null);
+        void (async () => {
+            try {
+                const { data, error } = await supabase.from("quizzes").select("title, settings").eq("id", quizId).eq("user_id", user.id).single();
+                if (!active) return;
+                if (error) {
+                    setLoadError("Impossible de charger ce quiz. Vérifie ta connexion et réessaie.");
+                    return;
                 }
-            });
-    }, [location.search, quizId]);
+                let settings = data?.settings;
+                if (typeof settings === "string") {
+                    try { settings = JSON.parse(settings); } catch { settings = null; }
+                }
+                if (!settings || typeof settings !== "object") {
+                    setLoadError("Ce quiz est introuvable ou ses paramètres sont incomplets.");
+                    return;
+                }
+                if (settings.mode === "custom_sequence" && Array.isArray(settings.questions)) {
+                    setCustomQuizTitle(data.title || "Quiz personnalisé");
+                    const questions = settings.questions as CustomQuestion[];
+                    setCustomQuestions(questions);
+                    const requestedType = query.get("type");
+                    setTypeParam(requestedType === "input" || requestedType === "multiple"
+                        ? requestedType
+                        : settings.inputType === "input" ? "input" : "multiple");
+                    try {
+                        const needsCountries = questions.some(question => getCustomQuestionMode(question.question_type)?.group === "pays");
+                        const needsFrance = questions.some(question => getCustomQuestionMode(question.question_type)?.group === "france");
+                        if (needsCountries) {
+                            const pays = await fetchCountries();
+                            if (!active) return;
+                            for (const country of pays) country.capital_variants = capitalVariantsMap[country.code] ?? country.capital_variants;
+                            setAllCountries(pays);
+                        }
+                        if (needsFrance) {
+                            const { data: franceData, error: franceError } = await supabase.from("fr_departements").select("code, nom, cheflieu, region");
+                            if (!active) return;
+                            if (franceError) throw franceError;
+                            setAllDepartments((franceData ?? []) as FranceDepartment[]);
+                        }
+                        setQuizLoaded(true);
+                        setCountriesLoading(false);
+                    } catch {
+                        if (active) setLoadError("Les données de ce quiz n’ont pas pu être chargées.");
+                    }
+                } else {
+                    setCustomQuizTitle("");
+                    setFlagsMode(settings.mode === "flags");
+                    setEuMode(settings.mode === "eu");
+                    setTypeParam(settings.inputType === "input" ? "input" : "multiple");
+                    setOnlyTerritories(!!settings.onlyTerritories);
+                    setShowTerritories(!!settings.withTerritories);
+                    setNumQuestions(Number(settings.numQuestions ?? 99999));
+                    setSelectedContinents(Array.isArray(settings.continents) ? settings.continents : []);
+                    setCustomQuestions(null);
+                    setQuizLoaded(true);
+                }
+            } catch {
+                if (active) setLoadError("Impossible de charger ce quiz. Vérifie ta connexion et réessaie.");
+            }
+        })();
+        return () => { active = false; };
+    }, [location.search, quizId, user]);
 
     // Pour les quiz classiques, charge les pays filtrés
     useEffect(() => {
-        if (!quizLoaded || customQuestions) return;
+        let active = true;
+        if (!quizLoaded || customQuestions) return () => { active = false; };
+        setCountriesLoading(true);
+        setLoadError(null);
         fetchCountries(selectedContinents.length ? selectedContinents : undefined)
             .then(data => {
+                if (!active) return;
                 for (const country of data) {
-                    const v = capitalVariantsMap[country.code];
-                    if (v) country.capital_variants = v;
+                    country.capital_variants = capitalVariantsMap[country.code] ?? country.capital_variants;
                 }
                 let filtered = euMode
                     ? data.filter(c => c.ue_date && c.ue_date.match(/^\d{4}/))
@@ -150,8 +283,12 @@ export default function Quiz() {
                     filtered = filtered.slice(0, numQuestions);
                 }
                 setCountries(filtered);
+                setCountriesLoading(false);
             })
-            .catch(() => setCountries([]));
+            .catch(() => {
+                if (active) { setCountries([]); setCountriesLoading(false); setLoadError("Impossible de charger les pays. Vérifie ta connexion et réessaie."); }
+            });
+        return () => { active = false; };
     }, [selectedContinents, showTerritories, onlyTerritories, euMode, flagsMode, numQuestions, quizLoaded, customQuestions]);
 
     // Gestion MCQ pour mode classique
@@ -176,24 +313,19 @@ export default function Quiz() {
 
     // Gestion MCQ pour mode custom_sequence
     useEffect(() => {
-        if (!customQuestions || !allCountries.length || current >= customQuestions.length) return;
-        const q = customQuestions[current];
-        const country = allCountries.find(c => c.code === q.country_code);
-        if (!country) return;
-        if (q.question_type === "capitale" && typeParam === "multiple") {
-            const correctCapital = country.capital;
-            const allCapitals = uniq(allCountries.map(c => c.capital).filter(Boolean));
-            setMCOptions(getMCOptions(correctCapital, allCapitals));
-        } else if (q.question_type === "drapeau" && typeParam === "multiple") {
-            const correctCountry = country.name;
-            const allNames = uniq(allCountries.map(c => c.name).filter(Boolean));
-            setMCOptions(getMCOptions(correctCountry, allNames));
-        } else if (q.question_type === "annee_eu" && typeParam === "multiple") {
-            const year = country.ue_date?.slice(0,4) || "?";
-            const allYears = uniq(allCountries.map(c => c.ue_date?.slice(0,4)).filter(Boolean));
-            setMCOptions(getMCOptions(year, allYears));
-        }
-    }, [customQuestions, allCountries, current, typeParam]);
+        if (!customQuestions || current >= customQuestions.length || typeParam !== "multiple") return;
+        const question = customQuestions[current];
+        const mode = getCustomQuestionMode(question.question_type);
+        if (!mode) return;
+        const subjects: Array<Country | FranceDepartment> = mode.group === "france" ? allDepartments : allCountries;
+        const selectedSubject = mode.group === "france"
+            ? allDepartments.find(department => department.code === question.department_code)
+            : allCountries.find(country => country.code === question.country_code);
+        if (!selectedSubject) return;
+        const correctAnswer = customAnswerValue(question.question_type, selectedSubject);
+        const choices = subjects.map(subject => customAnswerValue(question.question_type, subject)).filter(Boolean);
+        setMCOptions(getMCOptions(correctAnswer, choices));
+    }, [customQuestions, allCountries, allDepartments, current, typeParam]);
 
     function getMCOptions(correct: string, allVals: string[]): MultipleChoiceOption[] {
         const uniqueVals = uniq(allVals.filter(v => v && v !== correct));
@@ -207,45 +339,52 @@ export default function Quiz() {
         else inputRef.current?.focus();
     }, [showCorrection, current, finished]);
 
+    function submitCustomAnswer(value: string) {
+        if (showCorrection || !customQuestions) return;
+        const question = customQuestions[current];
+        if (!question) return;
+        const mode = getCustomQuestionMode(question.question_type);
+        if (!mode) return;
+
+        if (mode.group === "france") {
+            const department = allDepartments.find(item => item.code === question.department_code);
+            if (!department) return;
+            const expected = customAnswerValue(question.question_type, department);
+            const correct = clean(value) === clean(expected);
+            setAnswers(previous => [...previous, { department, user: value, isCorrect: correct, questionType: question.question_type }]);
+            setLastAnswerCorrect(correct);
+            if (correct) setScore(previous => previous + 1);
+            setShowCorrection(true);
+            return;
+        }
+
+        const country = allCountries.find(item => item.code === question.country_code);
+        if (!country) return;
+        const expected = customAnswerValue(question.question_type, country);
+        const correct = question.question_type === "capitale" ? answerOk(value, country) : clean(value) === clean(expected);
+        setAnswers(previous => [...previous, { country, user: value, isCorrect: correct, questionType: question.question_type }]);
+        setLastAnswerCorrect(correct);
+        if (correct) setScore(previous => previous + 1);
+        setShowCorrection(true);
+    }
+
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (showCorrection) return;
-        let correct = false;
-        if (customQuestions && allCountries.length) {
-            const customQ = customQuestions[current];
-            const country = allCountries.find(c => c.code === customQ.country_code);
-            if (!country) return;
-            switch (customQ.question_type) {
-                case "capitale":
-                    correct = answerOk(userAnswer, country);
-                    break;
-                case "drapeau":
-                    correct = answerCountryOk(userAnswer, country);
-                    break;
-                case "annee_eu":
-                    correct = answerYearOk(userAnswer, country);
-                    break;
-            }
-            setLastAnswerCorrect(correct);
-            setAnswers(ans => [
-                ...ans,
-                { country, user: userAnswer, isCorrect: correct }
-            ]);
-            if (correct) setScore(s => s + 1);
-            setShowCorrection(true);
-        } else {
-            let correct = false;
-            if (euMode) correct = answerYearOk(userAnswer, countries[current]);
-            else if (flagsMode) correct = answerCountryOk(userAnswer, countries[current]);
-            else correct = answerOk(userAnswer, countries[current]);
-            setLastAnswerCorrect(correct);
-            setAnswers(ans => [
-                ...ans,
-                { country: countries[current], user: userAnswer, isCorrect: correct }
-            ]);
-            if (correct) setScore(s => s + 1);
-            setShowCorrection(true);
+        if (customQuestions) {
+            submitCustomAnswer(userAnswer);
+            return;
         }
+        const country = countries[current];
+        if (!country) return;
+        let correct = false;
+        if (euMode) correct = answerYearOk(userAnswer, country);
+        else if (flagsMode) correct = answerCountryOk(userAnswer, country);
+        else correct = answerOk(userAnswer, country);
+        setLastAnswerCorrect(correct);
+        setAnswers(previous => [...previous, { country, user: userAnswer, isCorrect: correct, questionType: euMode ? "annee_eu" : flagsMode ? "drapeau" : "capitale" }]);
+        if (correct) setScore(previous => previous + 1);
+        setShowCorrection(true);
     }
 
     function handleNext() {
@@ -280,13 +419,17 @@ export default function Quiz() {
         );
     }
 
-    if (!quizLoaded || (customQuestions && !allCountries.length)) return <p>Chargement…</p>;
+    if (loadError) return <p className="empty-state error" role="alert">{loadError}</p>;
+    const customNeedsCountries = customQuestions?.some(question => getCustomQuestionMode(question.question_type)?.group === "pays") ?? false;
+    const customNeedsFrance = customQuestions?.some(question => getCustomQuestionMode(question.question_type)?.group === "france") ?? false;
+    if (!quizLoaded || countriesLoading || (customQuestions && customNeedsCountries && !allCountries.length) || (customQuestions && customNeedsFrance && !allDepartments.length)) return <p className="loading-state">Chargement du quiz…</p>;
 
     const finishedLength = customQuestions ? customQuestions.length : countries.length;
+    if (finishedLength === 0) return <p className="empty-state">Aucune question disponible avec ces critères. Essaie une autre sélection.</p>;
 
     if (finished) {
         const wrongAnswers = answers.filter(a => !a.isCorrect);
-        const percent = Math.round((score / finishedLength) * 100);
+        const percent = Math.floor((score / finishedLength) * 100);
         return (
             <div className="quiz-result-wrapper">
                 <div className="recap-card">
@@ -296,30 +439,34 @@ export default function Quiz() {
                         <span>{score} bonnes réponses</span>
                         <span> / </span>
                         <span>{finishedLength} questions</span>
+                        <span> · {wrongAnswers.length} erreur{wrongAnswers.length === 1 ? "" : "s"}</span>
                     </div>
+                    <QuizAttemptStatus status={attemptSave.status} errorMessage={attemptSave.errorMessage} onRetry={attemptSave.retry} />
+                    {countryProgressSaveError && <p className="quiz-save-status quiz-save-status-error" role="alert">Active le suivi par continent avec le SQL fourni pour enregistrer cette progression.</p>}
                     {wrongAnswers.length > 0 ? (
                         <div>
                             <h3>Récapitulatif des erreurs :</h3>
                             <table className="recap-table">
                                 <thead>
                                 <tr>
-                                    <th>Drapeau</th>
-                                    <th>Pays</th>
+                                    <th>Type</th>
+                                    <th>Élément</th>
                                     <th>Ta réponse</th>
-                                    <th>Bonne réponse</th>
+                                    <th>Correction</th>
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {wrongAnswers.map((a, idx) => (
-                                    <tr key={idx}>
-                                        <td><Flag code={a.country.code} /></td>
-                                        <td>{a.country.name}</td>
+                                {wrongAnswers.map((a, idx) => {
+                                    const subjectName = a.country?.name ?? `${a.department?.code ?? ""} ${a.department?.nom ?? ""}`;
+                                    const correctAnswer = a.country ? customAnswerValue(a.questionType, a.country)
+                                        : a.department ? customAnswerValue(a.questionType, a.department) : "";
+                                    return <tr key={idx}>
+                                        <td>{getCustomQuestionMode(a.questionType)?.label ?? "Question"}</td>
+                                        <td>{subjectName}</td>
                                         <td className="recap-wrong-answer">{a.user || <i>(vide)</i>}</td>
-                                        <td className="recap-correct-answer">
-                                            {a.country.capital}
-                                        </td>
-                                    </tr>
-                                ))}
+                                        <td className="recap-correct-answer">{correctAnswer}</td>
+                                    </tr>;
+                                })}
                                 </tbody>
                             </table>
                         </div>
@@ -336,47 +483,63 @@ export default function Quiz() {
     }
 
     // Quelle question on affiche ?
-    let questionType = "capitale", country: Country | undefined;
+    let questionType: CustomQuestion["question_type"] = "capitale";
+    let country: Country | undefined;
+    let department: FranceDepartment | undefined;
     if (customQuestions) {
         const q = customQuestions[current];
-        country = allCountries.find(c => c.code === q.country_code);
         questionType = q.question_type;
+        if (getCustomQuestionMode(questionType)?.group === "france") department = allDepartments.find(item => item.code === q.department_code);
+        else country = allCountries.find(item => item.code === q.country_code);
     } else {
         country = countries[current];
     }
+    const customSubject = department ?? country;
+    const customQuestionMode = customQuestions ? getCustomQuestionMode(questionType) : undefined;
+    const correctChoice = customQuestions && customSubject
+        ? customAnswerValue(questionType, customSubject)
+        : country ? (euMode ? country.ue_date?.slice(0, 4) : flagsMode ? country.name : country.capital) : undefined;
 
     return (
-        <div className="quiz-main-wrapper">
-            <div className="quiz-content-inner">
+        <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""}`}>
+            <div className={`quiz-content-inner ${customQuestions ? "custom-quiz-layout" : ""}`}>
                 {(country && ((customQuestions && questionType === "drapeau") || (!customQuestions && flagsMode))) && (
-                    <div className="flag-wrapper">
+                    <div className={`flag-wrapper ${customQuestions ? "custom-quiz-visual france-map-panel" : ""}`}>
                         <Flag code={country.code} />
                     </div>
                 )}
-                {country && !customQuestions && !euMode && !flagsMode && (
-                    <div className="quiz-map-wrapper">
+                {department && (
+                    <div className="quiz-map-wrapper france-custom-map france-map-panel">
+                        <CarteFranceDept highlight={department.code} />
+                    </div>
+                )}
+                {country && ((customQuestions && questionType === "annee_eu") || (!customQuestions && euMode)) && (
+                    <div className={`quiz-map-wrapper ${customQuestions ? "custom-quiz-map-panel france-map-panel" : ""}`}>
+                        <CarteMonde codeISO={country.code} region="europe" />
+                    </div>
+                )}
+                {country && ((customQuestions && questionType === "capitale") || (!customQuestions && !euMode && !flagsMode)) && (
+                    <div className={`quiz-map-wrapper ${customQuestions ? "custom-quiz-map-panel france-map-panel" : ""}`}>
                         <CarteMonde codeISO={country.code} />
                     </div>
                 )}
                 <form
-                    className={`quiz-card ${typeParam === "input" ? "input-mode" : ""}`}
+                    className={`quiz-card ${typeParam === "input" ? "input-mode" : ""} ${customQuestions ? "custom-quiz-answer france-answer-panel" : ""}`}
                     onSubmit={typeParam === "multiple" ? e => e.preventDefault() : handleSubmit}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
                     <h2>
                         {customQuestions
-                            ? questionType === "capitale"
-                                ? `Devine la capitale de:`
-                                : questionType === "annee_eu"
-                                    ? `Année d'adhésion à l'Union Européenne : `
-                                    : `Quel est ce pays ?`
+                            ? customPrompt(questionType)
                             : euMode ? "Année d'adhésion à l'Union Européenne :"
                                 : flagsMode ? "Quel est ce pays ?"
                                     : "Devine la capitale de"}
                     </h2>
-                    <div className="quiz-country">
-                        {(!customQuestions && !flagsMode) || (customQuestions && questionType !== "drapeau") ? country?.name : null}
+                    <div className={`quiz-country ${((customQuestions && customQuestionMode?.showSubject) || (!customQuestions && !flagsMode && !euMode)) ? "quiz-country-target" : ""}`}>
+                        {customQuestions
+                            ? customQuestionMode?.showSubject ? department?.nom ?? country?.name : null
+                            : flagsMode ? null : country?.name}
                     </div>
                     <div className="quiz-form">
                         {typeParam === "multiple"
@@ -384,61 +547,40 @@ export default function Quiz() {
                                 <MultipleChoice
                                     options={mcOptions}
                                     onSelect={option => {
-                                        if (showCorrection || !country) return;
-                                        let correct = false;
+                                        if (showCorrection) return;
                                         if (customQuestions) {
-                                            if (questionType === "capitale") correct = answerOk(option.value, country);
-                                            if (questionType === "drapeau") correct = answerCountryOk(option.value, country);
-                                            if (questionType === "annee_eu") correct = answerYearOk(option.value, country);
-                                            setLastAnswerCorrect(correct);
-                                            setAnswers(ans => [
-                                                ...ans,
-                                                { country, user: option.value, isCorrect: correct }
-                                            ]);
-                                            if (correct) setScore(s => s + 1);
-                                            setShowCorrection(true);
-                                            return;
-                                        } else {
-                                            if (euMode) correct = answerYearOk(option.value, country);
-                                            else if (flagsMode) correct = answerCountryOk(option.value, country);
-                                            else correct = answerOk(option.value, country);
-                                            setLastAnswerCorrect(correct);
-                                            setAnswers(ans => [
-                                                ...ans,
-                                                { country, user: option.value, isCorrect: correct }
-                                            ]);
-                                            if (correct) setScore(s => s + 1);
-                                            setShowCorrection(true);
+                                            submitCustomAnswer(option.value);
                                             return;
                                         }
+                                        if (!country) return;
+                                        let correct = false;
+                                        if (euMode) correct = answerYearOk(option.value, country);
+                                        else if (flagsMode) correct = answerCountryOk(option.value, country);
+                                        else correct = answerOk(option.value, country);
+                                        setLastAnswerCorrect(correct);
+                                        setAnswers(previous => [...previous, { country, user: option.value, isCorrect: correct, questionType: euMode ? "annee_eu" : flagsMode ? "drapeau" : "capitale" }]);
+                                        if (correct) setScore(previous => previous + 1);
+                                        setShowCorrection(true);
                                     }}
                                     disabled={showCorrection && lastAnswerCorrect}
                                     selected={showCorrection ? answers[answers.length - 1]?.user : undefined}
                                     showCorrection={showCorrection}
-                                    correct={country ? (
-                                        questionType === "capitale" ? country.capital :
-                                            questionType === "drapeau" ? country.name :
-                                                questionType === "annee_eu" ? country.ue_date?.slice(0, 4) : undefined
-                                    ) : undefined}
+                                    correct={correctChoice}
                                 />
                             )
                             : (
                                 <>
                                     <input
                                         ref={inputRef}
-                                        type={questionType === "annee_eu" ? "number" : "text"}
-                                        inputMode={questionType === "annee_eu" ? "numeric" : "text"}
+                                        type={customQuestionMode?.inputType ?? (euMode ? "number" : "text")}
+                                        inputMode={customQuestionMode?.inputType === "number" || (!customQuestionMode && euMode) ? "numeric" : "text"}
                                         value={userAnswer}
                                         onChange={e => setUserAnswer(e.target.value)}
                                         autoFocus
                                         className="quiz-input"
-                                        placeholder={
-                                            questionType === "annee_eu" ? "Écris l'année (ex : 2004)" :
-                                                questionType === "drapeau" ? "Écris le nom du pays" :
-                                                    "Écris la capitale"
-                                        }
+                                        placeholder={customQuestionMode?.placeholder ?? (euMode ? "Écris l'année (ex : 2004)" : flagsMode ? "Écris le nom du pays" : "Écris la capitale")}
                                         disabled={showCorrection}
-                                        min={questionType === "annee_eu" ? 1950 : undefined}
+                                        min={customQuestionMode?.inputMin ?? (!customQuestionMode && euMode ? 1950 : undefined)}
                                     />
                                     {showCorrection ? null : (
                                         <button className="quiz-btn" type="submit">
@@ -467,11 +609,7 @@ export default function Quiz() {
                                 ? "Bonne réponse ! 👏"
                                 : (
                                     customQuestions
-                                        ? questionType === "annee_eu"
-                                            ? <>Mauvaise réponse.<br />La bonne année était <b>{country?.ue_date?.slice(0, 4) || "?"}</b></>
-                                            : questionType === "drapeau"
-                                                ? <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.name}</b></>
-                                                : <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.capital}</b></>
+                                        ? <>Mauvaise réponse.<br />La bonne réponse était <b>{correctChoice}</b></>
                                         : (euMode
                                                 ? <>Mauvaise réponse.<br />La bonne année était <b>{country?.ue_date ? country.ue_date.slice(0, 4) : "?"}</b></>
                                                 : flagsMode

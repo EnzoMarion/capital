@@ -26,6 +26,8 @@ function getCategory(country: Country) {
 export default function RevisionList() {
     const [countries, setCountries] = useState<Country[]>([]);
     const [search, setSearch] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [open, setOpen] = useState<Record<string, boolean>>(() => {
         const o: Record<string, boolean> = {};
         for (const cat of CATEGORIES) o[cat.label] = false; // Tous fermés
@@ -34,7 +36,15 @@ export default function RevisionList() {
 
 
     useEffect(() => {
-        fetchCountries().then(setCountries);
+        let active = true;
+        fetchCountries().then(data => {
+            if (active) setCountries(data);
+        }).catch(() => {
+            if (active) setError("La liste des pays n’a pas pu être chargée.");
+        }).finally(() => {
+            if (active) setLoading(false);
+        });
+        return () => { active = false; };
     }, []);
 
     const filteredByCat: Record<string, Country[]> = {};
@@ -50,6 +60,12 @@ export default function RevisionList() {
         setOpen(o => ({ ...o, [cat]: !o[cat] }));
     }
 
+    const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
+
+    if (loading) return <p className="loading-state">Chargement des fiches de révision…</p>;
+    if (error) return <p className="empty-state error" role="alert">{error}</p>;
+    if (!countries.length) return <p className="empty-state">Aucune fiche de révision n’est disponible.</p>;
+
     return (
         <div className="revision-wrapper">
             <h2 className="revision-title">Mode Révision : par catégorie</h2>
@@ -62,8 +78,8 @@ export default function RevisionList() {
             />
             {CATEGORIES.map(cat => {
                 const countriesInCat = (filteredByCat[cat.label] || []).filter(c =>
-                    c.name.toLowerCase().includes(search.toLowerCase()) ||
-                    (c.capital && c.capital.toLowerCase().includes(search.toLowerCase()))
+                    c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").includes(normalizedSearch) ||
+                    (c.capital && c.capital.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").includes(normalizedSearch))
                 );
                 if (countriesInCat.length === 0) return null;
                 return (

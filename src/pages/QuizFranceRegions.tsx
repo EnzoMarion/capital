@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CarteFranceDept } from "../components/CarteFranceDept";
 import { supabase } from "../api/supabase";
+import { CarteFranceDept } from "../components/CarteFranceDept";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
 import { useAuth } from "../context/AuthContext";
 import { useQuizAttemptSave } from "../api/quizAttempts";
 
-type Department = { id: number; code: string; nom: string; cheflieu: string; region: string | null };
+type Department = { id: number; code: string; nom: string; region: string | null };
 type AnswerMode = "input" | "multiple";
 
-function shuffle<T>(items: T[]): T[] {
+function shuffle<T>(items: T[]) {
     const copy = [...items];
     for (let i = copy.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -22,7 +22,7 @@ function normalize(value: string) {
     return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[’'`-]/g, " ").replace(/[^\p{L}\p{N}]/gu, "").toLocaleLowerCase("fr-FR");
 }
 
-export default function QuizFranceDepts() {
+export default function QuizFranceRegions() {
     const [searchParams] = useSearchParams();
     const mode: AnswerMode = searchParams.get("type") === "input" ? "input" : "multiple";
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -41,12 +41,12 @@ export default function QuizFranceDepts() {
     useEffect(() => {
         let active = true;
         void (async () => {
-            const { data, error: queryError } = await supabase.from("fr_departements").select("id, code, nom, cheflieu, region");
+            const { data, error: queryError } = await supabase.from("fr_departements").select("id, code, nom, region");
             if (!active) return;
             if (queryError) setError("Les données des départements français n’ont pas pu être chargées.");
-            else if (!data?.length) setError("Aucun département n’est disponible.");
             else {
-                const rows = data as Department[];
+                const rows = ((data ?? []) as Department[]).filter(item => item.code && item.nom && item.region);
+                if (!rows.length) setError("Aucune région n’est renseignée dans les données françaises.");
                 setDepartments(rows);
                 setOrder(shuffle(rows.map((_, index) => index)));
             }
@@ -58,11 +58,11 @@ export default function QuizFranceDepts() {
     }, []);
 
     const department = departments[order[current]];
+    const regions = useMemo(() => [...new Set(departments.map(item => item.region).filter((region): region is string => Boolean(region)))], [departments]);
     const options = useMemo(() => {
         if (!department || mode !== "multiple") return [];
-        const wrong = shuffle([...new Set(departments.map(item => item.cheflieu).filter(name => name && name !== department.cheflieu))]).slice(0, 3);
-        return shuffle([department.cheflieu, ...wrong]);
-    }, [department, departments, mode]);
+        return shuffle([department.region!, ...shuffle(regions.filter(region => region !== department.region)).slice(0, 3)]);
+    }, [department, mode, regions]);
     const latestAnswer = answers[answers.length - 1];
 
     useEffect(() => {
@@ -73,21 +73,21 @@ export default function QuizFranceDepts() {
     const attemptSave = useQuizAttemptSave({
         enabled: finished && answers.length > 0,
         userId: user?.id,
-        quizKey: "france_departements",
+        quizKey: "france_regions",
         score: answers.filter(item => item.isCorrect).length,
         totalQuestions: answers.length,
-        scopeKey: "tous-les-departements",
-        scopeLabel: "Tous les départements",
+        scopeKey: "toutes-les-regions",
+        scopeLabel: "Toutes les régions",
     });
 
     function submit(value: string) {
         if (!department || showCorrection) return;
-        const isCorrect = normalize(value) === normalize(department.cheflieu);
+        const isCorrect = normalize(value) === normalize(department.region ?? "");
         setAnswer(value);
         setAnswers(previous => [...previous, {
             question: `${department.nom} (${department.code})`,
             userAnswer: value,
-            correctAnswer: department.cheflieu,
+            correctAnswer: department.region ?? "",
             isCorrect,
         }]);
         setShowCorrection(true);
@@ -109,35 +109,34 @@ export default function QuizFranceDepts() {
         setFinished(false);
     }
 
-    if (loading) return <p className="loading-state">Chargement des départements…</p>;
+    if (loading) return <p className="loading-state">Chargement du quiz des régions…</p>;
     if (error) return <p className="empty-state error" role="alert">{error}</p>;
-    if (!departments.length) return <p className="empty-state">Aucun département disponible.</p>;
     if (finished) {
-        return <FranceQuizResult title="Départements français" answers={answers} onRestart={restart} saveStatus={attemptSave.status} saveError={attemptSave.errorMessage} onRetrySave={attemptSave.retry} />;
+        return <FranceQuizResult title="Régions françaises" answers={answers} onRestart={restart} saveStatus={attemptSave.status} saveError={attemptSave.errorMessage} onRetrySave={attemptSave.retry} />;
     }
-    if (!department) return <p className="empty-state">Aucun département disponible.</p>;
+    if (!department) return <p className="empty-state">Aucun département disponible pour ce quiz.</p>;
 
     return (
         <main className="quizfr-wrapper france-game-card">
-            <p className="section-kicker">France · Départements · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
-            <h1>Retrouve la préfecture</h1>
+            <p className="section-kicker">France · Régions · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
+            <h1>Retrouve la région</h1>
             <div className="france-quiz-layout">
                 <div className="france-map-panel"><CarteFranceDept highlight={department.code} /></div>
                 <div className="france-answer-panel">
-                    <p className="quizfr-question"><span className="quizfr-tricolor" role="img" aria-label="Drapeau français"><i /><i /><i /></span><strong>{department.nom}</strong><span className="quizfr-deptcode">({department.code})</span></p>
+                    <p className="quizfr-question"><strong>{department.nom}</strong><span className="quizfr-deptcode">({department.code})</span></p>
                     {mode === "multiple" ? (
-                        <div className="mc-choices france-mc-choices" aria-label="Choisis la préfecture">
-                            {options.map(option => <button key={option} type="button" className={`mc-btn${showCorrection && option === department.cheflieu ? " correct" : showCorrection && latestAnswer?.userAnswer === option ? " wrong" : ""}`} disabled={showCorrection} onClick={() => submit(option)}>{option}</button>)}
+                        <div className="mc-choices france-mc-choices" aria-label="Choisis la région">
+                            {options.map(option => <button key={option} type="button" className={`mc-btn${showCorrection && option === department.region ? " correct" : showCorrection && latestAnswer?.userAnswer === option ? " wrong" : ""}`} disabled={showCorrection} onClick={() => submit(option)}>{option}</button>)}
                         </div>
                     ) : (
                         <form className="quizfr-form" onSubmit={event => { event.preventDefault(); submit(answer); }}>
-                            <label htmlFor="answer">Quel est le chef-lieu (préfecture) ?</label>
-                            <input id="answer" ref={inputRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={showCorrection} autoComplete="off" />
+                            <label htmlFor="region-answer">Quelle région ?</label>
+                            <input id="region-answer" ref={inputRef} value={answer} disabled={showCorrection} onChange={event => setAnswer(event.target.value)} autoComplete="off" />
                             {!showCorrection && <button type="submit">Valider</button>}
                         </form>
                     )}
-                    {showCorrection && <p className={`quiz-correction ${latestAnswer?.isCorrect ? "correct" : "wrong"}`} role="status">{latestAnswer?.isCorrect ? "Bonne réponse !" : <>La bonne réponse était <strong>{department.cheflieu}</strong>.</>}</p>}
-                    {showCorrection && <button ref={nextButtonRef} type="button" className="primary-btn france-next" onClick={next}>{current === order.length - 1 ? "Voir le résultat" : "Suivant"}</button>}
+                    {showCorrection && <p className={`quiz-correction ${latestAnswer?.isCorrect ? "correct" : "wrong"}`} role="status">{latestAnswer?.isCorrect ? "Bonne réponse !" : <>La bonne réponse était <strong>{department.region}</strong>.</>}</p>}
+                    {showCorrection && <button ref={nextButtonRef} className="primary-btn france-next" type="button" onClick={next}>{current === order.length - 1 ? "Voir le résultat" : "Suivant"}</button>}
                     <div className="quizfr-progress">Question {current + 1} sur {order.length} · {answers.filter(item => item.isCorrect).length} bonne{answers.filter(item => item.isCorrect).length > 1 ? "s" : ""} réponse{answers.filter(item => item.isCorrect).length > 1 ? "s" : ""}</div>
                 </div>
             </div>

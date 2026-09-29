@@ -1,82 +1,122 @@
 import { useState } from "react";
-import { signup, login, getUser } from "../api/auth";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { login, resetPassword, signup, updatePassword } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+
+type AuthMode = "login" | "register" | "reset" | "update";
+
+function friendlyError(message: string) {
+    const normalized = message.toLowerCase();
+    if (normalized.includes("invalid login credentials")) return "Adresse e-mail ou mot de passe incorrect.";
+    if (normalized.includes("user already registered")) return "Cette adresse a déjà un compte. Connecte-toi plutôt.";
+    if (normalized.includes("password should be at least")) return "Choisis un mot de passe plus long (au moins 6 caractères).";
+    if (normalized.includes("email not confirmed")) return "Confirme ton adresse e-mail depuis le message reçu avant de te connecter.";
+    if (normalized.includes("rate limit")) return "Trop de tentatives. Attends un peu avant de réessayer.";
+    return "La demande n’a pas abouti. Vérifie les informations et réessaie.";
+}
 
 export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [mode, setMode] = useState<"login" | "register">("login");
+    const [mode, setMode] = useState<AuthMode>(() => window.location.hash.includes("type=recovery") ? "update" : "login");
     const [message, setMessage] = useState<string | null>(null);
+    const [error, setError] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { setUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
 
-    async function handleSubmit(e: React.FormEvent) {
+    function returnAfterLogin() {
+        const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+        navigate(from?.pathname ? `${from.pathname}${from.search ?? ""}` : "/", { replace: true });
+    }
+
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setLoading(true);
         setMessage(null);
+        setError(false);
         try {
-            if (mode === "register") {
-                const { error } = await signup(email, password);
-                if (error) setMessage("Erreur: " + error.message);
-                else setMessage("Compte créé ! Vérifie tes mails 🚀");
-            } else {
-                const { error } = await login(email, password);
-                if (error) setMessage("Erreur: " + error.message);
-                else {
-                    // Recharge le user et mets à jour le contexte pour affichage instantané
-                    const { data } = await getUser();
-                    if (data?.user && data.user.email && data.user.id) {
-                        setUser({ email: data.user.email, id: data.user.id });
-                    }
-                    setMessage("Connexion réussie !");
-                    setTimeout(() => navigate("/"), 800); // Redirige sur accueil si tu veux
-                }
+            if (mode === "reset") {
+                const { error: resetError } = await resetPassword(email.trim());
+                if (resetError) throw resetError;
+                setMessage("Si un compte existe avec cette adresse, tu recevras un lien de réinitialisation.");
+                return;
             }
-        } catch {
-            setMessage("Erreur interne");
+            if (mode === "update") {
+                const { error: updateError } = await updatePassword(password);
+                if (updateError) throw updateError;
+                setMessage("Ton mot de passe a été mis à jour. Tu peux continuer à utiliser ton compte.");
+                setMode("login");
+                setPassword("");
+                return;
+            }
+            if (mode === "register") {
+                const { data, error: signupError } = await signup(email.trim(), password);
+                if (signupError) throw signupError;
+                if (data.session && data.user?.email && data.user.id) {
+                    setUser({ email: data.user.email, id: data.user.id });
+                    returnAfterLogin();
+                    return;
+                }
+                setMessage("Compte créé. Consulte tes e-mails pour confirmer ton adresse, puis connecte-toi.");
+                setMode("login");
+                setPassword("");
+                return;
+            }
+
+            const { data, error: loginError } = await login(email.trim(), password);
+            if (loginError) throw loginError;
+            if (data.user?.email && data.user.id) setUser({ email: data.user.email, id: data.user.id });
+            returnAfterLogin();
+        } catch (err) {
+            setError(true);
+            setMessage(friendlyError(err instanceof Error ? err.message : "Erreur inconnue"));
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }
 
+    const resetSent = searchParams.get("password-reset") === "sent";
+
     return (
-        <div className="flex flex-col items-center mt-10">
-            <h1 className="text-xl font-semibold mb-2">Connexion / Inscription</h1>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-72">
-                <input
-                    type="email"
-                    placeholder="Email"
-                    required
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    className="border p-2 rounded"
-                />
-                <input
-                    type="password"
-                    placeholder="Mot de passe"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    className="border p-2 rounded"
-                />
-                <button type="submit" disabled={loading} className="bg-blue-600 text-white rounded p-2">
-                    {mode === "register" ? "Créer un compte" : "Se connecter"}
-                </button>
-                <button
-                    type="button"
-                    disabled={loading}
-                    className="text-blue-600 underline text-sm"
-                    onClick={() => setMode(mode === "register" ? "login" : "register")}
-                >
-                    {mode === "register"
-                        ? "Déjà un compte ? Connexion"
-                        : "Pas de compte ? Inscription"}
+        <main className="login-card">
+            <p className="section-kicker">Ton espace</p>
+            <h1 className="login-heading">{mode === "reset" ? "Réinitialiser le mot de passe" : mode === "update" ? "Choisis un nouveau mot de passe" : "Ravi de te revoir"}</h1>
+            <p className="login-intro">{mode === "reset" ? "Entre ton adresse et nous t’enverrons un lien de réinitialisation." : mode === "update" ? "Choisis un mot de passe d’au moins 6 caractères." : "Connecte-toi pour retrouver tes quiz personnalisés."}</p>
+
+            {(mode === "login" || mode === "register") && (
+                <div className="auth-tabs" role="tablist" aria-label="Connexion ou création de compte">
+                    <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setMessage(null); }}>Connexion</button>
+                    <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setMessage(null); }}>Créer un compte</button>
+                </div>
+            )}
+
+            <form className="login-form" onSubmit={handleSubmit}>
+                {mode !== "update" && <label>
+                    Adresse e-mail
+                    <input type="email" name="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="toi@exemple.fr" />
+                </label>}
+                {mode !== "reset" && (
+                    <label>
+                        Mot de passe
+                        <span className="password-field">
+                            <input type={showPassword ? "text" : "password"} name="password" autoComplete={mode === "register" || mode === "update" ? "new-password" : "current-password"} minLength={6} required value={password} onChange={e => setPassword(e.target.value)} placeholder="6 caractères minimum" />
+                            <button className="password-toggle" type="button" onClick={() => setShowPassword(show => !show)} aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}>{showPassword ? "Masquer" : "Afficher"}</button>
+                        </span>
+                    </label>
+                )}
+                <button className="primary-btn login-submit" type="submit" disabled={loading}>
+                    {loading ? "Patiente un instant…" : mode === "reset" ? "Envoyer le lien" : mode === "update" ? "Enregistrer le mot de passe" : mode === "register" ? "Créer mon compte" : "Se connecter"}
                 </button>
             </form>
-            {message && <p className="mt-4 text-center">{message}</p>}
-            <a href="/" className="mt-6 px-4 py-2 bg-gray-300 text-black rounded">Retour accueil</a>
-        </div>
+
+            {mode === "login" && <button className="text-action" type="button" onClick={() => { setMode("reset"); setMessage(null); }}>Mot de passe oublié ?</button>}
+            {mode === "reset" && <button className="text-action" type="button" onClick={() => { setMode("login"); setMessage(null); }}>← Retour à la connexion</button>}
+            {(message || resetSent) && <p className={`auth-message${error ? " error" : ""}`} role={error ? "alert" : "status"}>{message || "Si tu avais demandé un nouveau mot de passe, consulte ta boîte e-mail."}</p>}
+            <div className="login-footer"><Link to="/">Retour à l’accueil</Link></div>
+        </main>
     );
 }

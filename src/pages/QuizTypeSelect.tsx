@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import AnswerModeChoices from "../components/AnswerModeChoices";
 
 export default function QuizTypeSelect() {
     const navigate = useNavigate();
@@ -11,10 +12,9 @@ export default function QuizTypeSelect() {
     }
 
     return (
-        <div className="mode-select-wrapper">
+        <main className="answer-mode-page">
             <h1>Quel mode de réponse ?</h1>
-            <button className="mode-btn" onClick={() => selectType("input")}>Saisie libre (écrire la capitale)</button>
-            <button className="mode-btn" onClick={() => selectType("multiple")}>Choix multiple (QCM)</button>
-        </div>
+            <AnswerModeChoices onSelect={selectType} />
+        </main>
     );
 }

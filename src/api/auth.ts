@@ -9,6 +9,14 @@ export async function login(email: string, password: string) {
 export async function getUser() {
     return supabase.auth.getUser();
 }
+export async function resetPassword(email: string) {
+    return supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login?password-reset=sent`,
+    });
+}
+export async function updatePassword(password: string) {
+    return supabase.auth.updateUser({ password });
+}
 export async function logout() {
     return supabase.auth.signOut();
 }
