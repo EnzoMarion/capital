@@ -8,6 +8,13 @@ export default function QuizTypeSelect() {
     function selectType(type: "input" | "multiple") {
         const params = new URLSearchParams(location.search);
         params.set("type", type);
+        const franceMode = params.get("france");
+        if (franceMode) {
+            const route = franceMode === "regions" ? "/quiz-france-regions" : "/quiz-france-depts";
+            const gameParam = franceMode === "departments" || franceMode === "depts" || franceMode === "1" ? "&game=department" : "";
+            navigate(`${route}?type=${type}${gameParam}`);
+            return;
+        }
         navigate(`/modes?${params.toString()}`);
     }
 

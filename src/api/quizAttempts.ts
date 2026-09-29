@@ -17,8 +17,10 @@ export const QUIZ_STAT_LABELS: Record<string, string> = {
     capitales_monde: "Capitales du monde",
     drapeaux: "Drapeaux",
     union_europeenne: "Union européenne",
-    france_departements: "Départements français",
+    france_departements: "Préfectures françaises",
+    france_identification: "Identification des départements",
     france_regions: "Régions françaises",
+    personnalise_france: "Quiz personnalisés France",
     personnalise: "Quiz personnalisés",
 };
 

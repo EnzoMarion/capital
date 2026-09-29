@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import TerritoryModePicker, { type TerritoryMode } from "../components/TerritoryModePicker";
 
@@ -20,8 +20,14 @@ export default function SelectMode() {
     const location = useLocation();
     const sourceParams = new URLSearchParams(location.search);
     const franceMode = sourceParams.get("france");
-    const isFranceQuiz = franceMode === "depts" || franceMode === "regions";
     const isEuMode = sourceParams.get("eu") === "1";
+
+    if (franceMode) {
+        const route = franceMode === "regions" ? "/quiz-france-regions" : "/quiz-france-depts";
+        const type = sourceParams.get("type") === "input" ? "input" : "multiple";
+        const gameParam = franceMode === "departments" || franceMode === "depts" || franceMode === "1" ? "&game=department" : "";
+        return <Navigate to={`${route}?type=${type}${gameParam}`} replace />;
+    }
 
     function handleContinentChange(code: string, checked: boolean) {
         setSelectedContinents(cs => checked ? [...cs, code] : cs.filter(c => c !== code));
@@ -29,12 +35,6 @@ export default function SelectMode() {
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (isFranceQuiz) {
-            const type = sourceParams.get("type") === "input" ? "input" : "multiple";
-            navigate(`/quiz-france-${franceMode}?type=${type}`);
-            return;
-        }
-
         const params = new URLSearchParams(location.search);
         params.delete("france");
         params.delete("continents");
@@ -48,48 +48,40 @@ export default function SelectMode() {
     }
 
     return (
-        <form onSubmit={handleSubmit} className={`config-form ${isFranceQuiz ? "config-form-ready" : ""}`}>
+        <form onSubmit={handleSubmit} className="config-form">
             <p className="section-kicker">Paramètres du quiz</p>
-            <h2>{isFranceQuiz
-                ? franceMode === "depts" ? "Départements français" : "Régions françaises"
-                : isEuMode ? "Choisis les pays de l’Union européenne à réviser :" : "Choisis un ou plusieurs continents :"}</h2>
+            <h2>{isEuMode ? "Choisis les pays de l’Union européenne à réviser :" : "Choisis un ou plusieurs continents :"}</h2>
 
-            {isFranceQuiz ? (
-                <p className="config-ready-copy">Ton mode de réponse est choisi. La partie complète est prête.</p>
-            ) : (
-                <>
-                    <div className="config-checkboxes">
-                        {CONTINENTS.map(cont => (
-                            <label key={cont.code} className="config-checkbox-label">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedContinents.includes(cont.code)}
-                                    onChange={e => handleContinentChange(cont.code, e.target.checked)}
-                                    disabled={territoryMode === "territories-only"}
-                                />
-                                <span>{cont.label}</span>
-                            </label>
-                        ))}
-                    </div>
+            <div className="config-checkboxes">
+                {CONTINENTS.map(cont => (
+                    <label key={cont.code} className="config-checkbox-label">
+                        <input
+                            type="checkbox"
+                            checked={selectedContinents.includes(cont.code)}
+                            onChange={e => handleContinentChange(cont.code, e.target.checked)}
+                            disabled={territoryMode === "territories-only"}
+                        />
+                        <span>{cont.label}</span>
+                    </label>
+                ))}
+            </div>
 
-                    {!isEuMode && <TerritoryModePicker value={territoryMode} onChange={setTerritoryMode} />}
+            {!isEuMode && <TerritoryModePicker value={territoryMode} onChange={setTerritoryMode} />}
 
-                    <div className="config-select-wrapper">
-                        <label className="config-select-label">Nombre de questions :</label>
-                        <select
-                            value={numQuestions}
-                            onChange={e => setNumQuestions(Number(e.target.value))}
-                            className="config-select"
-                        >
-                            <option value={99999}>Tout / maximum possible</option>
-                            {QUESTION_COUNTS.map(n => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                    </div>
-                </>
-            )}
+            <div className="config-select-wrapper">
+                <label className="config-select-label">Nombre de questions :</label>
+                <select
+                    value={numQuestions}
+                    onChange={e => setNumQuestions(Number(e.target.value))}
+                    className="config-select"
+                >
+                    <option value={99999}>Tout / maximum possible</option>
+                    {QUESTION_COUNTS.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+            </div>
 
             <button type="submit" className="config-submit-btn">
-                {isFranceQuiz ? "Commencer le quiz" : "Continuer"}
+                Continuer
             </button>
         </form>
     );

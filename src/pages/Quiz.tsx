@@ -114,7 +114,8 @@ export default function Quiz() {
     const [selectedContinents, setSelectedContinents] = useState<string[]>([]);
     const [numQuestions, setNumQuestions] = useState<number>(99999);
 
-    const personalQuizKey = customQuestions ? "personnalise" : euMode ? "union_europeenne" : flagsMode ? "drapeaux" : "capitales_monde";
+    const isFranceOnlyCustomQuiz = Boolean(customQuestions?.length && customQuestions.every(question => getCustomQuestionMode(question.question_type)?.group === "france"));
+    const personalQuizKey = customQuestions ? isFranceOnlyCustomQuiz ? "personnalise_france" : "personnalise" : euMode ? "union_europeenne" : flagsMode ? "drapeaux" : "capitales_monde";
     const personalQuizTotal = customQuestions ? customQuestions.length : countries.length;
     const orderedContinents = [...selectedContinents].sort();
     const personalQuizScopeParts = [
@@ -499,6 +500,10 @@ export default function Quiz() {
     const correctChoice = customQuestions && customSubject
         ? customAnswerValue(questionType, customSubject)
         : country ? (euMode ? country.ue_date?.slice(0, 4) : flagsMode ? country.name : country.capital) : undefined;
+    const departmentHighlights = department && customQuestions && questionType === "fr_region" && department.region
+        ? allDepartments.filter(item => item.region === department.region).map(item => item.code)
+        : department?.code;
+    const hideFranceMapAnswer = customQuestions && (questionType === "fr_departement" || questionType === "fr_region");
 
     return (
         <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""}`}>
@@ -510,7 +515,7 @@ export default function Quiz() {
                 )}
                 {department && (
                     <div className="quiz-map-wrapper france-custom-map france-map-panel">
-                        <CarteFranceDept highlight={department.code} />
+                        <CarteFranceDept highlight={departmentHighlights} hideHighlightName={hideFranceMapAnswer} />
                     </div>
                 )}
                 {country && ((customQuestions && questionType === "annee_eu") || (!customQuestions && euMode)) && (

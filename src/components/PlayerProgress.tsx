@@ -35,6 +35,27 @@ function progressFor(countries: Country[], answers: Map<string, boolean>, includ
     };
 }
 
+function QuizRecordCard({ stat }: { stat: MyQuizStat }) {
+    const errors = Math.max(0, stat.best_total - stat.best_score);
+    const target = nextTarget(errors === 0 ? stat.best_percent : Math.min(stat.best_percent, 99));
+    const percentile = stat.quiz_key !== "personnalise" && stat.player_count > 5
+        ? Math.floor((stat.players_below / (stat.player_count - 1)) * 100)
+        : null;
+
+    return <article className="player-goal-card">
+        <div className="player-goal-card-top"><strong>{QUIZ_STAT_LABELS[stat.quiz_key] ?? stat.quiz_key}</strong><span>{stat.best_percent}%</span></div>
+        <small className="player-scope-label">{stat.scope_label}</small>
+        <div className="player-goal-track"><span style={{ width: `${stat.best_percent}%` }} /></div>
+        <p>{errors === 0 ? "Record parfait" : `Prochain objectif : ${target}%`}</p>
+        <small>{stat.best_score}/{stat.best_total} bonnes réponses · {errors} erreur{errors === 1 ? "" : "s"} · {stat.attempt_count} partie{stat.attempt_count === 1 ? "" : "s"}</small>
+        <small>{percentile !== null
+            ? `Meilleur que ${percentile}% des joueurs`
+            : stat.quiz_key === "personnalise"
+                ? "Record personnel sur ce quiz personnalisé"
+                : "Comparaison disponible après 6 joueurs"}</small>
+    </article>;
+}
+
 export default function PlayerProgress({ userId }: { userId: string }) {
     const [stats, setStats] = useState<MyQuizStat[]>([]);
     const [loadingStats, setLoadingStats] = useState(true);
@@ -74,8 +95,11 @@ export default function PlayerProgress({ userId }: { userId: string }) {
     const totals = useMemo(() => ({
         attempts: stats.reduce((sum, item) => sum + item.attempt_count, 0),
     }), [stats]);
+    const franceStats = stats
+        .filter(item => item.quiz_key.startsWith("france_") || item.quiz_key === "personnalise_france")
+        .sort((a, b) => (QUIZ_STAT_LABELS[a.quiz_key] ?? a.quiz_key).localeCompare(QUIZ_STAT_LABELS[b.quiz_key] ?? b.quiz_key, "fr"));
     const goals = [...stats]
-        .filter(item => item.quiz_key !== "capitales_monde")
+        .filter(item => item.quiz_key !== "capitales_monde" && !item.quiz_key.startsWith("france_") && item.quiz_key !== "personnalise_france")
         .sort((a, b) => b.best_percent - a.best_percent || b.attempt_count - a.attempt_count);
     const answersByCountry = useMemo(
         () => new Map<string, boolean>(countryProgress.map(answer => [answer.country_code, answer.is_correct] as const)),
@@ -117,31 +141,22 @@ export default function PlayerProgress({ userId }: { userId: string }) {
                         )}
             </section>
 
-            {loadingStats ? <div className="player-progress-loading" aria-label="Chargement des records"><span /><span /><span /></div>
-                : statsError ? <p className="player-progress-message">Impossible de charger les autres records pour le moment.</p>
-                    : goals.length > 0 && (
+            <section className="player-france-records" aria-labelledby="france-records-title">
+                <h3 id="france-records-title">Quiz de France</h3>
+                {loadingStats ? <div className="player-progress-loading" aria-label="Chargement des records France"><span /><span /><span /></div>
+                    : statsError ? <p className="player-progress-message">Impossible de charger les records France pour le moment.</p>
+                        : franceStats.length > 0 ? (
+                            <div className="player-goals-grid">
+                                {franceStats.map(stat => <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />)}
+                            </div>
+                        ) : <p className="player-france-empty">Joue un quiz de France pour afficher tes records ici.</p>}
+            </section>
+
+            {!loadingStats && !statsError && goals.length > 0 && (
                         <section className="player-other-records" aria-labelledby="other-records-title">
                             <h3 id="other-records-title">Autres records</h3>
                             <div className="player-goals-grid">
-                                {goals.map(stat => {
-                                    const errors = Math.max(0, stat.best_total - stat.best_score);
-                                    const target = nextTarget(errors === 0 ? stat.best_percent : Math.min(stat.best_percent, 99));
-                                    const percentile = stat.quiz_key !== "personnalise" && stat.player_count > 5
-                                        ? Math.floor((stat.players_below / (stat.player_count - 1)) * 100)
-                                        : null;
-                                    return <article className="player-goal-card" key={`${stat.quiz_key}:${stat.scope_key}`}>
-                                        <div className="player-goal-card-top"><strong>{QUIZ_STAT_LABELS[stat.quiz_key] ?? stat.quiz_key}</strong><span>{stat.best_percent}%</span></div>
-                                        <small className="player-scope-label">{stat.scope_label}</small>
-                                        <div className="player-goal-track"><span style={{ width: `${stat.best_percent}%` }} /></div>
-                                        <p>{errors === 0 ? "Record parfait" : `Prochain objectif : ${target}%`}</p>
-                                        <small>{stat.best_score}/{stat.best_total} bonnes réponses · {errors} erreur{errors === 1 ? "" : "s"} · {stat.attempt_count} partie{stat.attempt_count === 1 ? "" : "s"}</small>
-                                        <small>{percentile !== null
-                                            ? `Meilleur que ${percentile}% des joueurs`
-                                            : stat.quiz_key === "personnalise"
-                                                ? "Record personnel sur ce quiz personnalisé"
-                                                : "Comparaison disponible après 6 joueurs"}</small>
-                                    </article>;
-                                })}
+                                {goals.map(stat => <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />)}
                             </div>
                         </section>
                     )}

@@ -2,6 +2,7 @@ export const CUSTOM_QUESTION_MODES = [
     { key: "capitale", label: "Capitale", group: "pays", answerField: "capital", answerFormat: "text", prompt: "Devine la capitale de :", placeholder: "Écris la capitale", inputType: "text", inputMin: undefined, showSubject: true },
     { key: "drapeau", label: "Drapeau", group: "pays", answerField: "name", answerFormat: "text", prompt: "Quel est ce pays ?", placeholder: "Écris le nom du pays", inputType: "text", inputMin: undefined, showSubject: false },
     { key: "annee_eu", label: "Année UE", group: "pays", answerField: "ue_date", answerFormat: "year", prompt: "Année d’adhésion à l’Union européenne :", placeholder: "Écris l’année (ex. : 2004)", inputType: "number", inputMin: 1950, showSubject: true },
+    { key: "fr_departement", label: "Département", group: "france", answerField: "nom", answerFormat: "text", prompt: "Quel est ce département ?", placeholder: "Écris le nom du département", inputType: "text", inputMin: undefined, showSubject: false },
     { key: "fr_prefecture", label: "Préfecture", group: "france", answerField: "cheflieu", answerFormat: "text", prompt: "Retrouve la préfecture de ce département :", placeholder: "Écris le nom de la préfecture", inputType: "text", inputMin: undefined, showSubject: true },
     { key: "fr_region", label: "Région", group: "france", answerField: "region", answerFormat: "text", prompt: "À quelle région appartient ce département ?", placeholder: "Écris le nom de la région", inputType: "text", inputMin: undefined, showSubject: true },
 ] as const;
