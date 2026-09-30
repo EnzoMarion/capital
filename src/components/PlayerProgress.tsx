@@ -41,7 +41,8 @@ function progressFor(countries: Country[], answers: Map<string, boolean>, includ
 function QuizRecordCard({ stat }: { stat: MyQuizStat }) {
     const errors = Math.max(0, stat.best_total - stat.best_score);
     const target = nextTarget(errors === 0 ? stat.best_percent : Math.min(stat.best_percent, 99));
-    const percentile = stat.quiz_key !== "personnalise" && stat.player_count > 5
+    const isCustomQuiz = stat.quiz_key.startsWith("personnalise");
+    const percentile = !isCustomQuiz && stat.player_count !== null && stat.players_below !== null && stat.player_count >= 6
         ? Math.floor((stat.players_below / (stat.player_count - 1)) * 100)
         : null;
 
@@ -53,7 +54,7 @@ function QuizRecordCard({ stat }: { stat: MyQuizStat }) {
         <small>{stat.best_score}/{stat.best_total} bonnes réponses · {errors} erreur{errors === 1 ? "" : "s"} · {stat.attempt_count} partie{stat.attempt_count === 1 ? "" : "s"}</small>
         <small>{percentile !== null
             ? `Meilleur que ${percentile}% des joueurs`
-            : stat.quiz_key === "personnalise"
+            : isCustomQuiz
                 ? "Record personnel sur ce quiz personnalisé"
                 : "Comparaison disponible après 6 joueurs"}</small>
     </article>;

@@ -9,8 +9,9 @@ export type MyQuizStat = {
     best_percent: number;
     best_score: number;
     best_total: number;
-    player_count: number;
-    players_below: number;
+    // These fields are deliberately null until the server-side cohort threshold is met.
+    player_count: number | null;
+    players_below: number | null;
 };
 
 export const QUIZ_STAT_LABELS: Record<string, string> = {

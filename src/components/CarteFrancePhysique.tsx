@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { Feature, FeatureCollection, Geometry, Position } from "geojson";
 import { FRENCH_MOUNTAIN_RANGES, FRENCH_RIVERS, type FrancePhysicalFeature } from "../utils/francePhysicalGeography";
 
@@ -54,10 +54,32 @@ function featurePath(feature: DepartmentFeature) {
 }
 
 function linePath(feature: FrancePhysicalFeature) {
-    return feature.coordinates.map((position, index) => {
-        const [x, y] = transform(position);
-        return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    }).join(" ");
+    return smoothPath(feature.coordinates, false);
+}
+
+function outlinePath(coordinates: Position[]) {
+    return smoothPath(coordinates, true);
+}
+
+function smoothPath(coordinates: Position[], closed: boolean) {
+    const points = coordinates.map(transform);
+    if (points.length < 3) return "";
+
+    const point = ([x, y]: Point) => `${x.toFixed(2)},${y.toFixed(2)}`;
+    let path = `M${point(points[0])}`;
+    const segmentCount = closed ? points.length : points.length - 1;
+
+    for (let index = 0; index < segmentCount; index++) {
+        const start = points[index];
+        const end = points[(index + 1) % points.length];
+        const previous = points[closed ? (index - 1 + points.length) % points.length : Math.max(0, index - 1)];
+        const next = points[closed ? (index + 2) % points.length : Math.min(points.length - 1, index + 2)];
+        const control1: Point = [start[0] + (end[0] - previous[0]) / 6, start[1] + (end[1] - previous[1]) / 6];
+        const control2: Point = [end[0] - (next[0] - start[0]) / 6, end[1] - (next[1] - start[1]) / 6];
+        path += ` C${point(control1)} ${point(control2)} ${point(end)}`;
+    }
+
+    return closed ? `${path} Z` : path;
 }
 
 function prepareDepartments(collection: DepartmentCollection) {
@@ -86,6 +108,7 @@ function prepareDepartments(collection: DepartmentCollection) {
 }
 
 export function CarteFrancePhysique({ type, highlight }: { type: MapType; highlight?: string }) {
+    const clipId = `france-physical-${useId().replace(/:/g, "")}`;
     const [collection, setCollection] = useState<DepartmentCollection | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -118,16 +141,26 @@ export function CarteFrancePhysique({ type, highlight }: { type: MapType; highli
         {!loading && !error && departments.length > 0 && <>
             <svg className="france-physical-map-svg" viewBox="0 0 720 660" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
                 <title>{mapTitle}</title>
+                <defs>
+                    <clipPath id={clipId}>
+                        {departments.map(department => <path key={department.code} d={department.path} fillRule="evenodd" />)}
+                    </clipPath>
+                </defs>
                 {departments.map(department => <path key={department.code} className="physical-department-shape" d={department.path} fillRule="evenodd" />)}
-                {FRENCH_RIVERS.map(feature => <path key={feature.id} className="physical-river-path" d={linePath(feature)} />)}
-                {FRENCH_MOUNTAIN_RANGES.map(feature => <path key={feature.id} className="physical-mountain-path" d={linePath(feature)} />)}
-                {activeFeature && <path className={type === "mountains" ? "physical-highlight physical-highlight-mountain" : "physical-highlight physical-highlight-river"} d={linePath(activeFeature)} />}
+                <g clipPath={`url(#${clipId})`}>
+                    {FRENCH_MOUNTAIN_RANGES.map(feature => feature.outline && <path key={feature.id} className="physical-mountain-area" d={outlinePath(feature.outline)} />)}
+                    {FRENCH_RIVERS.map(feature => <path key={feature.id} className="physical-river-path" d={linePath(feature)} />)}
+                    {activeFeature && (type === "mountains" && activeFeature.outline
+                        ? <path className="physical-highlight physical-highlight-mountain" d={outlinePath(activeFeature.outline)} />
+                        : <path className="physical-highlight physical-highlight-river" d={linePath(activeFeature)} />)}
+                </g>
+                {departments.map(department => <path key={`outline-${department.code}`} className="physical-department-outline" d={department.path} fill="none" />)}
             </svg>
             <div className="france-physical-map-legend" aria-hidden="true">
-                <span><i className="physical-legend-mountain" /> Reliefs</span>
+                <span><i className="physical-legend-mountain" /> Massifs</span>
                 <span><i className="physical-legend-river" /> Fleuves</span>
             </div>
-            <small className="map-credit">Contours départementaux : GeoJSON de Grégoire David · tracés principaux schématiques</small>
+            <small className="map-credit">Contours départementaux : GeoJSON de Grégoire David · emprises géographiques indicatives</small>
         </>}
     </div>;
 }

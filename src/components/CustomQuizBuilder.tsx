@@ -131,6 +131,7 @@ export default function CustomQuizBuilder({
                 <p className="section-kicker">Collection personnalisée</p>
                 <h1>Créer un quiz personnalisé</h1>
             <p>Choisis les questions à inclure. Tu choisiras le mode de réponse au lancement.</p>
+            <p className="custom-data-minimization-note">N’ajoute pas de nom, de coordonnées ou d’autres informations personnelles dans le titre ou la description.</p>
             </header>
 
             <section className="custom-builder-details" aria-label="Informations du quiz">

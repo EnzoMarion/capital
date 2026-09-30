@@ -1212,6 +1212,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .privacy-page section li + li { margin-top: 7px; }
 .privacy-setup-note { margin: 18px 0; padding: 16px 18px; border: 1px solid rgba(247,201,72,.32); border-radius: 14px; background: rgba(247,201,72,.07); color: #f4df9c; }
 .privacy-setup-note p { margin: 5px 0 0; color: #d4cba9; font-size: .86rem; }
+.student-data-note { margin: 14px 0; padding: 14px 16px; border: 1px solid rgba(172,155,255,.2); border-radius: 13px; background: rgba(25,22,52,.72); color: #e7e1fa; font-size: .86rem; line-height: 1.55; }
+.student-data-note p { margin: 5px 0 8px; color: #c5bfdc; }
+.student-data-note a { color: #c8bbff; text-decoration: underline; text-underline-offset: 2px; }
+.custom-data-minimization-note { margin: 8px 0 0; color: #aaa4c4; font-size: .82rem; }
 .privacy-back-link { text-align: center; }
 .privacy-back-link a { color: #c8bbff; }
 .auth-modal-overlay {
@@ -1305,15 +1309,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .france-physical-map-stack { width: 100%; padding: clamp(6px, 1.2vw, 14px); border: 1px solid rgba(172,155,255,.15); border-radius: 17px; background: linear-gradient(150deg, rgba(35,31,71,.88), rgba(19,19,42,.92)); box-shadow: inset 0 1px rgba(255,255,255,.04), 0 12px 28px rgba(0,0,0,.16); }
 .france-physical-map-svg { display: block; width: 100%; height: auto; max-height: min(55svh, 520px); overflow: visible; }
 .physical-department-shape { fill: #292544; stroke: rgba(207,198,243,.48); stroke-width: .7; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.physical-river-path, .physical-mountain-path, .physical-highlight { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.physical-river-path { stroke: #55b9ed; stroke-width: 2.2; opacity: .56; }
-.physical-mountain-path { stroke: #df9f56; stroke-width: 2.8; opacity: .58; stroke-dasharray: 1 0; }
-.physical-highlight-river { stroke: #75d8ff; stroke-width: 5; filter: drop-shadow(0 0 4px rgba(75,194,255,.8)); }
-.physical-highlight-mountain { stroke: #ffc16f; stroke-width: 5.5; filter: drop-shadow(0 0 4px rgba(255,166,68,.75)); }
+.physical-river-path, .physical-highlight { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.physical-river-path { stroke: #55b9ed; stroke-width: 1.8; opacity: .78; }
+.physical-mountain-area { fill: rgba(198, 137, 73, .25); stroke: rgba(236, 177, 105, .78); stroke-width: 1.1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.physical-department-outline { stroke: rgba(207,198,243,.64); stroke-width: .7; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+.physical-highlight-river { stroke: #75d8ff; stroke-width: 3.8; filter: drop-shadow(0 0 4px rgba(75,194,255,.8)); }
+.physical-highlight-mountain { fill: rgba(255, 181, 90, .57); stroke: #ffd18a; stroke-width: 2.2; filter: drop-shadow(0 0 5px rgba(255,166,68,.72)); }
 .france-physical-map-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; margin-top: 4px; color: #c8c0df; font-size: .7rem; }
 .france-physical-map-legend span { display: inline-flex; align-items: center; gap: 7px; }
 .france-physical-map-legend i { display: inline-block; width: 19px; height: 3px; border-radius: 4px; }
-.physical-legend-mountain { background: #df9f56; }
+.physical-legend-mountain { height: 10px !important; border: 1px solid #ecb169; border-radius: 6px !important; background: rgba(198,137,73,.55); }
 .physical-legend-river { background: #55b9ed; }
 .france-physical-game .france-quiz-layout { align-items: center; }
 @media (max-width: 700px) {

@@ -16,6 +16,7 @@ function friendlyError(message: string) {
 }
 
 export default function Login() {
+    const studentAccountsEnabled = import.meta.env.VITE_STUDENT_ACCOUNTS_ENABLED === "true";
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [mode, setMode] = useState<AuthMode>(() => window.location.hash.includes("type=recovery") ? "update" : "login");
@@ -35,6 +36,11 @@ export default function Login() {
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
+        if (mode === "register" && !studentAccountsEnabled) {
+            setError(true);
+            setMessage("La création de comptes est fermée en attendant la validation du cadre de protection des données.");
+            return;
+        }
         setLoading(true);
         setMessage(null);
         setError(false);
@@ -92,9 +98,21 @@ export default function Login() {
             {(mode === "login" || mode === "register") && (
                 <div className="auth-tabs" role="tablist" aria-label="Connexion ou création de compte">
                     <button type="button" role="tab" aria-selected={mode === "login"} className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setMessage(null); }}>Connexion</button>
-                    <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setMessage(null); }}>Créer un compte</button>
+                    {studentAccountsEnabled && <button type="button" role="tab" aria-selected={mode === "register"} className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setMessage(null); }}>Créer un compte</button>}
                 </div>
             )}
+
+            {!studentAccountsEnabled && mode === "login" && <aside className="student-data-note" aria-label="Création de compte indisponible">
+                <strong>La création de comptes est temporairement désactivée</strong>
+                <p>Les quiz publics restent accessibles sans compte. Les comptes seront ouverts après validation des informations de confidentialité et du cadre d’utilisation scolaire.</p>
+                <Link to="/confidentialite">Lire les informations sur les données</Link>
+            </aside>}
+
+            {mode === "register" && <aside className="student-data-note" aria-label="Informations sur les données du compte">
+                <strong>Avant de créer un compte</strong>
+                <p>Atlas enregistrera ton adresse e-mail, tes quiz personnalisés et tes résultats pour afficher ta progression. Tu peux jouer aux quiz publics sans compte. Si tu utilises Atlas pour un cours, vérifie avec ton enseignant que l’établissement a validé son utilisation. N’inscris pas de nom, de coordonnées ou d’informations personnelles dans les titres et descriptions de quiz.</p>
+                <Link to="/confidentialite">Lire les informations sur tes données</Link>
+            </aside>}
 
             <form className="login-form" onSubmit={handleSubmit}>
                 {mode !== "update" && <label>
