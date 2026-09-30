@@ -17,6 +17,7 @@ const CONTINENTS = [
     { code: "Oceania", label: "Océanie" },
 ];
 const NATIVE_FRANCE_QUIZ_KEYS = ["france_departements", "france_identification", "france_regions"];
+const NATIVE_SWISS_QUIZ_KEYS = ["switzerland_cantons", "personnalise_suisse"];
 
 function nextTarget(bestPercent: number) {
     if (bestPercent >= 100) return 100;
@@ -93,9 +94,12 @@ export default function PlayerProgress({ userId }: { userId: string }) {
         return () => { active = false; };
     }, [userId]);
 
-    const totals = useMemo(() => ({
-        attempts: stats.reduce((sum, item) => sum + item.attempt_count, 0),
-    }), [stats]);
+    const totals = useMemo(() => {
+        const attempts = stats.reduce((sum, item) => sum + item.attempt_count, 0);
+        const bestScore = stats.reduce((sum, item) => sum + item.best_score, 0);
+        const bestTotal = stats.reduce((sum, item) => sum + item.best_total, 0);
+        return { attempts, bestTotal, successRate: bestTotal ? Math.floor(bestScore * 100 / bestTotal) : null };
+    }, [stats]);
     const franceStats = stats
         .filter(item => item.quiz_key.startsWith("france_") || item.quiz_key === "personnalise_france")
         .sort((a, b) => (QUIZ_STAT_LABELS[a.quiz_key] ?? a.quiz_key).localeCompare(QUIZ_STAT_LABELS[b.quiz_key] ?? b.quiz_key, "fr"));
@@ -105,8 +109,15 @@ export default function PlayerProgress({ userId }: { userId: string }) {
             .filter(quizKey => !franceStats.some(stat => stat.quiz_key === quizKey))
             .map(quizKey => ({ quizKey, stat: null })),
     ].sort((a, b) => (QUIZ_STAT_LABELS[a.quizKey] ?? a.quizKey).localeCompare(QUIZ_STAT_LABELS[b.quizKey] ?? b.quizKey, "fr"));
+    const swissStats = stats.filter(item => NATIVE_SWISS_QUIZ_KEYS.includes(item.quiz_key));
+    const swissRecords: { quizKey: string; stat: MyQuizStat | null }[] = [
+        ...swissStats.map(stat => ({ quizKey: stat.quiz_key, stat })),
+        ...NATIVE_SWISS_QUIZ_KEYS
+            .filter(quizKey => !swissStats.some(stat => stat.quiz_key === quizKey))
+            .map(quizKey => ({ quizKey, stat: null })),
+    ];
     const goals = [...stats]
-        .filter(item => item.quiz_key !== "capitales_monde" && !item.quiz_key.startsWith("france_") && item.quiz_key !== "personnalise_france")
+        .filter(item => item.quiz_key !== "capitales_monde" && !item.quiz_key.startsWith("france_") && !item.quiz_key.startsWith("switzerland_") && !item.quiz_key.startsWith("personnalise_"))
         .sort((a, b) => b.best_percent - a.best_percent || b.attempt_count - a.attempt_count);
     const answersByCountry = useMemo(
         () => new Map<string, boolean>(countryProgress.map(answer => [answer.country_code, answer.is_correct] as const)),
@@ -114,12 +125,19 @@ export default function PlayerProgress({ userId }: { userId: string }) {
     );
 
     return (
-        <section className="player-progress" aria-labelledby="player-progress-title">
-            <div className="player-progress-heading">
-                <div><p className="section-kicker">Espace personnel</p><h2 id="player-progress-title">Mes records et objectifs</h2></div>
-                {!loadingStats && !statsError && <span className="player-attempt-count">{totals.attempts} partie{totals.attempts === 1 ? "" : "s"} jouée{totals.attempts === 1 ? "" : "s"}</span>}
-            </div>
-
+        <section className="player-progress" aria-labelledby="player-progress-summary-title">
+            <details className="player-progress-accordion">
+                <summary className="player-progress-summary">
+                    <div className="player-progress-heading">
+                        <div><p className="section-kicker">Espace personnel</p><h2 id="player-progress-summary-title">Mes records et objectifs</h2></div>
+                    </div>
+                    <div className="player-global-rate">
+                        <div><small>Réussite globale · tous les modes</small><strong>{loadingStats ? "…" : statsError || totals.successRate === null ? "—" : `${totals.successRate}%`}</strong></div>
+                        <span>{loadingStats ? "Chargement" : statsError ? "Indisponible" : totals.attempts ? `${totals.attempts} partie${totals.attempts === 1 ? "" : "s"}` : "Aucune partie"}</span>
+                        <i aria-hidden="true" />
+                    </div>
+                </summary>
+                <div className="player-progress-details">
             <section className="player-continent-section" aria-labelledby="continent-progress-title">
                 <div className="player-continent-heading">
                     <h3 id="continent-progress-title">Capitales par continent</h3>
@@ -165,6 +183,21 @@ export default function PlayerProgress({ userId }: { userId: string }) {
                         ) : null}
             </section>
 
+            <section className="player-swiss-records" aria-labelledby="swiss-records-title">
+                <h3 id="swiss-records-title">Quiz de Suisse</h3>
+                {loadingStats ? <div className="player-progress-loading" aria-label="Chargement des records Suisse"><span /><span /><span /></div>
+                    : statsError ? <p className="player-progress-message">Impossible de charger les records Suisse pour le moment.</p>
+                        : <div className="player-goals-grid">
+                            {swissRecords.map(({ quizKey, stat }) => stat
+                                ? <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />
+                                : <article className="player-goal-card player-france-mode-empty" key={quizKey}>
+                                    <div className="player-goal-card-top"><strong>{QUIZ_STAT_LABELS[quizKey] ?? quizKey}</strong><span>—</span></div>
+                                    <p>Pas encore joué</p>
+                                    <small>Joue une partie pour enregistrer ton record.</small>
+                                </article>)}
+                        </div>}
+            </section>
+
             {!loadingStats && !statsError && goals.length > 0 && (
                         <section className="player-other-records" aria-labelledby="other-records-title">
                             <h3 id="other-records-title">Autres records</h3>
@@ -173,6 +206,8 @@ export default function PlayerProgress({ userId }: { userId: string }) {
                             </div>
                         </section>
                     )}
+                </div>
+            </details>
         </section>
     );
 }

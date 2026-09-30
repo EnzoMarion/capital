@@ -4,10 +4,12 @@ import { supabase } from "../api/supabase";
 import {
     COUNTRY_QUESTION_MODES,
     FRANCE_QUESTION_MODES,
+    SWISS_QUESTION_MODES,
     getCustomAnswerValue,
     type CustomQuestion,
     type CustomQuestionType,
 } from "../utils/customQuizModes";
+import { SWISS_CANTONS } from "../utils/swissCantons";
 
 type Department = { code: string; nom: string; cheflieu: string; region: string | null };
 const CONTINENTS = [
@@ -70,10 +72,14 @@ export default function CustomQuizBuilder({
         const needle = normalize(search.trim());
         return departments.filter(department => !needle || normalize(`${department.code} ${department.nom} ${department.cheflieu} ${department.region ?? ""}`).includes(needle));
     }, [departments, search]);
+    const filteredSwissCantons = useMemo(() => {
+        const needle = normalize(search.trim());
+        return SWISS_CANTONS.filter(canton => !needle || normalize(`${canton.code} ${canton.name} ${canton.aliases.join(" ")}`).includes(needle));
+    }, [search]);
 
-    function isSelected(type: CustomQuestionType, code: string, group: "pays" | "france") {
+    function isSelected(type: CustomQuestionType, code: string, group: "pays" | "france" | "suisse") {
         return selectedQuestions.some(question => question.question_type === type &&
-            (group === "pays" ? question.country_code === code : question.department_code === code));
+            (group === "pays" ? question.country_code === code : group === "france" ? question.department_code === code : question.canton_code === code));
     }
 
     function toggleCountry(country: Country, type: CustomQuestionType) {
@@ -91,6 +97,15 @@ export default function CustomQuizBuilder({
                 return previous.filter(question => !(question.question_type === type && question.department_code === department.code));
             }
             return [...previous, { department_code: department.code, department_name: department.nom, question_type: type }];
+        });
+    }
+
+    function toggleSwissCanton(canton: (typeof SWISS_CANTONS)[number], type: CustomQuestionType) {
+        setSelectedQuestions(previous => {
+            if (previous.some(question => question.question_type === type && question.canton_code === canton.code)) {
+                return previous.filter(question => !(question.question_type === type && question.canton_code === canton.code));
+            }
+            return [...previous, { canton_code: canton.code, canton_name: canton.name, question_type: type }];
         });
     }
 
@@ -120,8 +135,8 @@ export default function CustomQuizBuilder({
 
             {sourceError && <p className="custom-source-error" role="status">{sourceError}</p>}
 
-            <section className="custom-question-group" aria-labelledby="custom-world-title">
-                <div className="custom-group-heading"><div><p className="section-kicker">01 · Monde</p><h2 id="custom-world-title">Questions par pays</h2></div><span>{filteredCountries.length} pays</span></div>
+            <details className="custom-question-group custom-question-accordion">
+                <summary className="custom-group-heading"><div><p className="section-kicker">01 · Monde</p><h2>Questions par pays</h2></div><span className="custom-group-summary-meta"><span>{filteredCountries.length} pays</span><i aria-hidden="true" /></span></summary>
                 <div className="custom-continent-filters" aria-label="Filtrer par continent">
                     {CONTINENTS.map(continent => <label key={continent.code} className={continentFilter.includes(continent.code) ? "selected" : ""}><input type="checkbox" checked={continentFilter.includes(continent.code)} onChange={event => setContinentFilter(current => event.target.checked ? [...current, continent.code] : current.filter(value => value !== continent.code))} />{continent.label}</label>)}
                 </div>
@@ -140,10 +155,10 @@ export default function CustomQuizBuilder({
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </details>
 
-            <section className="custom-question-group" aria-labelledby="custom-france-title">
-                <div className="custom-group-heading"><div><p className="section-kicker">02 · France</p><h2 id="custom-france-title">Questions par département</h2></div><span>{filteredDepartments.length} départements</span></div>
+            <details className="custom-question-group custom-question-accordion">
+                <summary className="custom-group-heading"><div><p className="section-kicker">02 · France</p><h2>Questions par département</h2></div><span className="custom-group-summary-meta"><span>{filteredDepartments.length} départements</span><i aria-hidden="true" /></span></summary>
                 <div className="quiz-create-section custom-table-scroll">
                     <table className="quiz-create-table custom-question-table">
                         <thead><tr><th>Département</th>{FRANCE_QUESTION_MODES.map(mode => <th key={mode.key}>{mode.label}</th>)}</tr></thead>
@@ -159,7 +174,25 @@ export default function CustomQuizBuilder({
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </details>
+
+            <details className="custom-question-group custom-question-accordion">
+                <summary className="custom-group-heading"><div><p className="section-kicker">03 · Suisse</p><h2>Questions par canton</h2></div><span className="custom-group-summary-meta"><span>{filteredSwissCantons.length} cantons</span><i aria-hidden="true" /></span></summary>
+                <div className="quiz-create-section custom-table-scroll">
+                    <table className="quiz-create-table custom-question-table">
+                        <thead><tr><th>Canton</th>{SWISS_QUESTION_MODES.map(mode => <th key={mode.key}>{mode.label}</th>)}</tr></thead>
+                        <tbody>
+                            {filteredSwissCantons.length === 0 ? <tr><td colSpan={SWISS_QUESTION_MODES.length + 1} className="quiz-create-empty">Aucun canton correspondant</td></tr>
+                                : filteredSwissCantons.map(canton => <tr key={canton.code}>
+                                    <td><strong>{canton.code}</strong> · {canton.name}</td>
+                                    {SWISS_QUESTION_MODES.map(mode => <td key={mode.key}>
+                                        <input type="checkbox" className="quiz-create-checkbox" aria-label={`${mode.label} · ${canton.name}`} checked={isSelected(mode.key, canton.code, "suisse")} onChange={() => toggleSwissCanton(canton, mode.key)} />
+                                    </td>)}
+                                </tr>)}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
         </div>
     );
 }

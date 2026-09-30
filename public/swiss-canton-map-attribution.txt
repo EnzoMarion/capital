@@ -1,0 +1,7 @@
+﻿Swiss canton map data
+
+Geometry source: Bundesamt für Statistik (BFS), GEOSTAT, based on swisstopo data.
+The geometry was exported from swiss-maps 4.7.0 (2026) as a local GeoJSON file.
+The swiss-maps project states that the geodata is licensed for non-commercial use and must be attributed to “Bundesamt für Statistik (BFS), GEOSTAT”.
+
+The swiss-maps software license is included in swiss-maps-LICENSE.txt.

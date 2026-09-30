@@ -7,7 +7,8 @@ export default function QuizTypeSelect() {
     const params = new URLSearchParams(location.search);
     const personalQuizId = params.get("quiz_id");
     const franceMode = params.get("france");
-    const showMap = !personalQuizId && ["regions", "departments", "depts", "1"].includes(franceMode ?? "");
+    const switzerlandMode = params.get("switzerland");
+    const showMap = !personalQuizId && (switzerlandMode === "cantons" || ["regions", "departments", "depts", "1"].includes(franceMode ?? ""));
 
     function selectType(type: AnswerMode) {
         const selectedType = type === "map" && !showMap ? "multiple" : type;
@@ -20,6 +21,10 @@ export default function QuizTypeSelect() {
             const route = franceMode === "regions" ? "/quiz-france-regions" : "/quiz-france-depts";
             const gameParam = franceMode === "departments" || franceMode === "depts" || franceMode === "1" ? "&game=department" : "";
             navigate(`${route}?type=${selectedType}${gameParam}`);
+            return;
+        }
+        if (switzerlandMode === "cantons") {
+            navigate(`/quiz-swiss-cantons?type=${selectedType}`);
             return;
         }
         navigate(`/modes?${params.toString()}`);

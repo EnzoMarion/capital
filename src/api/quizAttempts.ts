@@ -20,7 +20,9 @@ export const QUIZ_STAT_LABELS: Record<string, string> = {
     france_departements: "Préfectures françaises",
     france_identification: "Identification des départements",
     france_regions: "Régions françaises",
+    switzerland_cantons: "Cantons suisses",
     personnalise_france: "Quiz personnalisés France",
+    personnalise_suisse: "Quiz personnalisés Suisse",
     personnalise: "Quiz personnalisés",
 };
 

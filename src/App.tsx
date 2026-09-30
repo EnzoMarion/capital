@@ -18,6 +18,7 @@ import QuizFranceDepts from "./pages/QuizFranceDepts";
 import QuizFranceRegions from "./pages/QuizFranceRegions";
 import FranceQuizType from "./pages/FranceQuizType";
 import RevisionFrance from "./pages/RevisionFrance";
+import QuizSwissCantons from "./pages/QuizSwissCantons";
 import { useAuth } from "./context/AuthContext";
 
 function AuthRequired({ children }: { children: ReactNode }) {
@@ -124,6 +125,7 @@ function App() {
                 <Route path="/quiz-france-type" element={<FranceQuizType />} />
                 <Route path="/quiz-france-depts" element={<QuizFranceDepts />} />
                 <Route path="/quiz-france-regions" element={<QuizFranceRegions />} />
+                <Route path="/quiz-swiss-cantons" element={<QuizSwissCantons />} />
                 <Route path="/404" element={<NotFound />} />
                 <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>

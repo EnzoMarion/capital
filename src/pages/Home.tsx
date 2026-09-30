@@ -17,6 +17,10 @@ const franceModes = [
     { icon: "🧠", title: "Révision France", text: "Revois les codes, préfectures et régions à ton rythme.", route: "/revision-france" },
 ];
 
+const swissModes = [
+    { icon: "switzerland", title: "Cantons suisses", text: "Retrouve les 26 cantons en QCM, saisie libre ou carte muette.", route: "/quiz-type?switzerland=cantons" },
+];
+
 function FlagIcon({ country }: { country: "france" | "eu" }) {
     if (country === "france") {
         return <svg viewBox="0 0 30 20" aria-hidden="true" focusable="false">
@@ -35,12 +39,19 @@ function FlagIcon({ country }: { country: "france" | "eu" }) {
     </svg>;
 }
 
+function SwissFlagIcon() {
+    return <svg className="swiss-flag-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <rect width="32" height="32" rx="5" fill="#d52b1e" />
+        <path d="M13 6h6v7h7v6h-7v7h-6v-7H6v-6h7V6Z" fill="#fff" />
+    </svg>;
+}
+
 function ModeCard({ icon, title, text, route }: (typeof worldModes)[number]) {
     const navigate = useNavigate();
     return (
         <button className="mode-card" onClick={() => navigate(route)}>
             <span className="mode-card-top">
-                <span className="mode-icon" aria-hidden="true">{icon === "eu" ? <FlagIcon country="eu" /> : icon}</span>
+                <span className="mode-icon" aria-hidden="true">{icon === "eu" ? <FlagIcon country="eu" /> : icon === "switzerland" ? <SwissFlagIcon /> : icon}</span>
                 <span className="mode-card-copy">
                     <span className="mode-card-type">GÉOGRAPHIE</span>
                     <h3>{title}</h3>
@@ -61,8 +72,8 @@ export default function Home() {
         <main className="home-wrapper home-game-dashboard">
             <section className="home-hero">
                 <p className="hero-kicker"><span aria-hidden="true">✦</span> ATLAS · GÉOGRAPHIE</p>
-                <h1>Le monde et la France, à portée de carte.</h1>
-                <p>Retrouve les capitales, découvre les drapeaux et révise les départements et régions de France.</p>
+                <h1>Le monde, la France et la Suisse, à portée de carte.</h1>
+                <p>Retrouve les capitales, découvre les drapeaux et révise les territoires, régions et cantons.</p>
                 <span className="hero-orbit hero-orbit-one" aria-hidden="true" />
                 <span className="hero-orbit hero-orbit-two" aria-hidden="true" />
             </section>
@@ -83,9 +94,16 @@ export default function Home() {
                 <div className="home-grid">{franceModes.map(mode => <ModeCard key={mode.route} {...mode} />)}</div>
             </section>
 
+            <section className="home-section" aria-labelledby="switzerland-heading">
+                <div className="home-section-heading">
+                    <div><p className="section-kicker">03 · Cantons suisses</p><h2 id="switzerland-heading">La Suisse <span className="heading-swiss-flag" role="img" aria-label="Drapeau suisse"><SwissFlagIcon /></span></h2></div>
+                </div>
+                <div className="home-grid">{swissModes.map(mode => <ModeCard key={mode.route} {...mode} />)}</div>
+            </section>
+
             <section id="mes-quiz" className="home-section home-custom-quizzes" aria-labelledby="custom-quizzes-heading">
                 <div className="home-section-heading">
-                    <div><p className="section-kicker">03 · À toi de jouer</p><h2 id="custom-quizzes-heading">Mes quiz personnalisés</h2></div>
+                    <div><p className="section-kicker">04 · À toi de jouer</p><h2 id="custom-quizzes-heading">Mes quiz personnalisés</h2></div>
                     {user && <button className="create-quiz-btn" onClick={() => navigate("/create-quiz")}>＋ Créer un quiz</button>}
                 </div>
                 {user ? <MyQuizzes embedded /> : !loading ? (

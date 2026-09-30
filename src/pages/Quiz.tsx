@@ -4,6 +4,7 @@ import type { Country } from "../api/countries";
 import { useLocation } from "react-router-dom";
 import { CarteMonde } from "../components/CarteMonde";
 import { CarteFranceDept } from "../components/CarteFranceDept";
+import { CarteSuisseCantons } from "../components/CarteSuisseCantons";
 import MultipleChoice, { type MultipleChoiceOption } from "../components/MultipleChoice";
 import { capitalVariantsMap } from "../utils/capitalVariants";
 import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
@@ -11,6 +12,7 @@ import { supabase } from "../api/supabase";
 import { useAuth } from "../context/AuthContext";
 import { getCustomAnswerValue, getCustomQuestionMode, type CustomQuestionType } from "../utils/customQuizModes";
 import { isOverseasDepartment, normalizeDepartmentCode } from "../utils/franceGeography";
+import { SWISS_CANTONS, cantonAnswerIsCorrect, type SwissCanton } from "../utils/swissCantons";
 import { recordCountryProgress, useQuizAttemptSave } from "../api/quizAttempts";
 import QuizAttemptStatus from "../components/QuizAttemptStatus";
 
@@ -48,6 +50,7 @@ function answerCountryOk(userInput: string, country: Country) {
 type Answer = {
     country?: Country;
     department?: FranceDepartment;
+    swissCanton?: SwissCanton;
     user: string;
     isCorrect: boolean;
     questionType: CustomQuestionType;
@@ -59,6 +62,8 @@ type CustomQuestion = {
     country_name?: string;
     department_code?: string;
     department_name?: string;
+    canton_code?: string;
+    canton_name?: string;
     question_type: CustomQuestionType;
 };
 
@@ -72,7 +77,7 @@ const CONTINENT_LABELS: Record<string, string> = {
     Oceania: "Océanie",
 };
 
-function customAnswerValue(questionType: CustomQuestionType, subject: Country | FranceDepartment) {
+function customAnswerValue(questionType: CustomQuestionType, subject: Country | FranceDepartment | SwissCanton) {
     const mode = getCustomQuestionMode(questionType);
     return mode ? getCustomAnswerValue(mode, subject) : "";
 }
@@ -118,7 +123,8 @@ export default function Quiz() {
     const [numQuestions, setNumQuestions] = useState<number>(99999);
 
     const isFranceOnlyCustomQuiz = Boolean(customQuestions?.length && customQuestions.every(question => getCustomQuestionMode(question.question_type)?.group === "france"));
-    const personalQuizKey = customQuestions ? isFranceOnlyCustomQuiz ? "personnalise_france" : "personnalise" : euMode ? "union_europeenne" : flagsMode ? "drapeaux" : "capitales_monde";
+    const isSwissOnlyCustomQuiz = Boolean(customQuestions?.length && customQuestions.every(question => getCustomQuestionMode(question.question_type)?.group === "suisse"));
+    const personalQuizKey = customQuestions ? isFranceOnlyCustomQuiz ? "personnalise_france" : isSwissOnlyCustomQuiz ? "personnalise_suisse" : "personnalise" : euMode ? "union_europeenne" : flagsMode ? "drapeaux" : "capitales_monde";
     const personalQuizTotal = customQuestions ? customQuestions.length : countries.length;
     const orderedContinents = [...selectedContinents].sort();
     const personalQuizScopeParts = [
@@ -321,6 +327,13 @@ export default function Quiz() {
         const question = customQuestions[current];
         const mode = getCustomQuestionMode(question.question_type);
         if (!mode) return;
+        if (mode.group === "suisse") {
+            const canton = SWISS_CANTONS.find(item => item.code === question.canton_code);
+            if (!canton) return;
+            const choices = SWISS_CANTONS.map(item => item.name);
+            setMCOptions(getMCOptions(customAnswerValue(question.question_type, canton), choices));
+            return;
+        }
         const subjects: Array<Country | FranceDepartment> = mode.group === "france" ? allDepartments : allCountries;
         const selectedSubject = mode.group === "france"
             ? allDepartments.find(department => department.code === question.department_code)
@@ -353,6 +366,17 @@ export default function Quiz() {
         if (!question) return;
         const mode = getCustomQuestionMode(question.question_type);
         if (!mode) return;
+
+        if (mode.group === "suisse") {
+            const canton = SWISS_CANTONS.find(item => item.code === question.canton_code);
+            if (!canton) return;
+            const correct = cantonAnswerIsCorrect(value, canton);
+            setAnswers(previous => [...previous, { swissCanton: canton, user: value, isCorrect: correct, questionType: question.question_type }]);
+            setLastAnswerCorrect(correct);
+            if (correct) setScore(previous => previous + 1);
+            setShowCorrection(true);
+            return;
+        }
 
         if (mode.group === "france") {
             const department = allDepartments.find(item => item.code === question.department_code);
@@ -515,9 +539,10 @@ export default function Quiz() {
                                 </thead>
                                 <tbody>
                                 {wrongAnswers.map((a, idx) => {
-                                    const subjectName = a.country?.name ?? `${a.department?.code ?? ""} ${a.department?.nom ?? ""}`;
-                    const correctAnswer = a.mapAnswerLabel ?? (a.country ? customAnswerValue(a.questionType, a.country)
-                                        : a.department ? customAnswerValue(a.questionType, a.department) : "");
+                                    const subjectName = a.country?.name ?? a.swissCanton?.name ?? `${a.department?.code ?? ""} ${a.department?.nom ?? ""}`;
+                                    const correctAnswer = a.mapAnswerLabel ?? (a.country ? customAnswerValue(a.questionType, a.country)
+                                        : a.department ? customAnswerValue(a.questionType, a.department)
+                                            : a.swissCanton ? customAnswerValue(a.questionType, a.swissCanton) : "");
                                     return <tr key={idx}>
                                         <td>{getCustomQuestionMode(a.questionType)?.label ?? "Question"}</td>
                                         <td>{subjectName}</td>
@@ -544,15 +569,18 @@ export default function Quiz() {
     let questionType: CustomQuestion["question_type"] = "capitale";
     let country: Country | undefined;
     let department: FranceDepartment | undefined;
+    let swissCanton: SwissCanton | undefined;
     if (customQuestions) {
         const q = customQuestions[current];
         questionType = q.question_type;
-        if (getCustomQuestionMode(questionType)?.group === "france") department = allDepartments.find(item => item.code === q.department_code);
+        const group = getCustomQuestionMode(questionType)?.group;
+        if (group === "france") department = allDepartments.find(item => item.code === q.department_code);
+        else if (group === "suisse") swissCanton = SWISS_CANTONS.find(item => item.code === q.canton_code);
         else country = allCountries.find(item => item.code === q.country_code);
     } else {
         country = countries[current];
     }
-    const customSubject = department ?? country;
+    const customSubject = department ?? swissCanton ?? country;
     const customQuestionMode = customQuestions ? getCustomQuestionMode(questionType) : undefined;
     const correctChoice = customQuestions && customSubject
         ? customAnswerValue(questionType, customSubject)
@@ -576,6 +604,11 @@ export default function Quiz() {
                 {department && (
                     <div className="quiz-map-wrapper france-custom-map france-map-panel">
                         <CarteFranceDept highlight={isMapMode ? undefined : departmentHighlights} answerHighlight={isMapMode && showCorrection && !lastAnswerCorrect ? departmentHighlights : undefined} hideHighlightName={hideFranceMapAnswer || isMapMode} selectedCode={selectedMapCode} onSelect={isMapMode && !showCorrection ? setSelectedMapCode : undefined} />
+                    </div>
+                )}
+                {swissCanton && customQuestions && (
+                    <div className="quiz-map-wrapper swiss-custom-map france-map-panel">
+                        <CarteSuisseCantons highlight={swissCanton.code} />
                     </div>
                 )}
                 {country && isEuropeanQuestion && (
