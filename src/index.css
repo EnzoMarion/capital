@@ -401,6 +401,28 @@ input:focus, select:focus { border-color: #9290e3; outline: 3px solid rgba(100,1
 .france-revision-card p { display: flex; flex-wrap: wrap; gap: 5px; margin: 3px 0; font-size: .86rem; }
 .france-revision-card p span { color: var(--muted); }
 .france-revision-card p strong { color: var(--ink); }
+.france-revision-selectable-card { width: 100%; color: #eeeaff; font: inherit; text-align: left; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease, box-shadow .16s ease; }
+.france-revision-selectable-card:hover { transform: translateY(-2px); border-color: rgba(172,155,255,.5); }
+.france-revision-selectable-card:focus-visible { outline: 2px solid rgba(172,155,255,.75); outline-offset: 3px; }
+.france-revision-selectable-card[aria-pressed="true"] { border-color: rgba(172,155,255,.72); background: linear-gradient(120deg, rgba(111,91,201,.38), rgba(35,30,67,.96)); box-shadow: inset 0 0 0 1px rgba(172,155,255,.18), 0 6px 18px rgba(0,0,0,.2); }
+.france-revision-card-copy { display: grid; gap: 5px; }
+.france-revision-card-copy > strong { color: #f4f0ff; font-size: 1.02rem; }
+.france-revision-card-copy > span { color: #aaa5c5; font-size: .86rem; }
+.france-revision-accordion { margin: 10px 0; overflow: hidden; border: 1px solid rgba(172,155,255,.17); border-radius: 15px; background: rgba(10,9,29,.32); }
+.france-revision-accordion > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 66px; padding: 12px 15px; cursor: pointer; list-style: none; }
+.france-revision-accordion > summary::-webkit-details-marker { display: none; }
+.france-revision-accordion > summary > span:first-child { display: grid; gap: 3px; }
+.france-revision-accordion > summary small { color: #aaa4c4; font-size: .68rem; }
+.france-revision-accordion > summary strong { color: #eeeaff; font-size: 1rem; }
+.france-revision-accordion-count { display: inline-flex; align-items: center; gap: 13px; color: #bdb6d5; font-size: .75rem; white-space: nowrap; }
+.france-revision-accordion-count i { width: 9px; height: 9px; border-right: 2px solid #bdb6d5; border-bottom: 2px solid #bdb6d5; transform: rotate(45deg) translateY(-2px); transition: transform .18s ease; }
+.france-revision-accordion[open] > summary { border-bottom: 1px solid rgba(172,155,255,.14); background: rgba(139,117,237,.07); }
+.france-revision-accordion[open] > summary .france-revision-accordion-count i { transform: rotate(225deg) translate(-2px, -2px); }
+.france-revision-accordion > summary:focus-visible { outline: 2px solid rgba(172,155,255,.7); outline-offset: -3px; }
+.france-revision-accordion-content { display: grid; gap: 13px; padding: 14px; }
+.france-revision-accordion-content .france-physical-map-panel { margin-bottom: 2px; }
+.france-revision-empty, .france-revision-error { margin: 0; padding: 14px; color: #aaa4c4; font-size: .82rem; }
+.france-revision-error { color: #ffadb9; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
 
 @media (max-width: 700px) {
@@ -1178,4 +1200,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .custom-question-accordion { padding: 11px; }
   .custom-question-accordion > summary h2 { font-size: .98rem; }
   .custom-group-summary-meta { gap: 8px; }
+}
+
+/* France physical geography quizzes */
+.france-physical-map-panel { width: min(100%, 700px); margin: 0 auto; }
+.france-physical-map-stack { width: 100%; padding: clamp(6px, 1.2vw, 14px); border: 1px solid rgba(172,155,255,.15); border-radius: 17px; background: linear-gradient(150deg, rgba(35,31,71,.88), rgba(19,19,42,.92)); box-shadow: inset 0 1px rgba(255,255,255,.04), 0 12px 28px rgba(0,0,0,.16); }
+.france-physical-map-svg { display: block; width: 100%; height: auto; max-height: min(55svh, 520px); overflow: visible; }
+.physical-department-shape { fill: #292544; stroke: rgba(207,198,243,.48); stroke-width: .7; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.physical-river-path, .physical-mountain-path, .physical-highlight { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.physical-river-path { stroke: #55b9ed; stroke-width: 2.2; opacity: .56; }
+.physical-mountain-path { stroke: #df9f56; stroke-width: 2.8; opacity: .58; stroke-dasharray: 1 0; }
+.physical-highlight-river { stroke: #75d8ff; stroke-width: 5; filter: drop-shadow(0 0 4px rgba(75,194,255,.8)); }
+.physical-highlight-mountain { stroke: #ffc16f; stroke-width: 5.5; filter: drop-shadow(0 0 4px rgba(255,166,68,.75)); }
+.france-physical-map-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; margin-top: 4px; color: #c8c0df; font-size: .7rem; }
+.france-physical-map-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.france-physical-map-legend i { display: inline-block; width: 19px; height: 3px; border-radius: 4px; }
+.physical-legend-mountain { background: #df9f56; }
+.physical-legend-river { background: #55b9ed; }
+.france-physical-game .france-quiz-layout { align-items: center; }
+@media (max-width: 700px) {
+  .france-physical-map-svg { max-height: min(38svh, 340px); }
+  .france-physical-map-stack { padding: 7px; }
+  .france-physical-map-legend { margin-top: 2px; font-size: .65rem; }
 }

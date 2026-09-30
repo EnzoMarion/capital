@@ -16,7 +16,7 @@ const CONTINENTS = [
     { code: "South America", label: "Amérique du Sud" },
     { code: "Oceania", label: "Océanie" },
 ];
-const NATIVE_FRANCE_QUIZ_KEYS = ["france_departements", "france_identification", "france_regions"];
+const NATIVE_FRANCE_QUIZ_KEYS = ["france_departements", "france_identification", "france_regions", "france_mountains", "france_rivers"];
 const NATIVE_SWISS_QUIZ_KEYS = ["switzerland_cantons", "switzerland_chief_towns"];
 
 function nextTarget(bestPercent: number) {

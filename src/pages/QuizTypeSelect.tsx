@@ -17,6 +17,11 @@ export default function QuizTypeSelect() {
             navigate(`/quiz?${params.toString()}`);
             return;
         }
+        if (franceMode === "mountains" || franceMode === "rivers") {
+            const feature = franceMode === "rivers" ? "rivers" : "mountains";
+            navigate(`/quiz-france-physical?type=${selectedType}&feature=${feature}`);
+            return;
+        }
         if (franceMode) {
             const route = franceMode === "regions" ? "/quiz-france-regions" : "/quiz-france-depts";
             const gameParam = franceMode === "departments" || franceMode === "depts" || franceMode === "1" ? "&game=department" : "";

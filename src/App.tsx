@@ -1,5 +1,5 @@
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import type { ReactNode } from "react";
 import Home from "./pages/Home";
 import QuizTypeSelect from "./pages/QuizTypeSelect";
@@ -17,9 +17,11 @@ import RevisionList from "./pages/RevisionList";
 import QuizFranceDepts from "./pages/QuizFranceDepts";
 import QuizFranceRegions from "./pages/QuizFranceRegions";
 import FranceQuizType from "./pages/FranceQuizType";
-import RevisionFrance from "./pages/RevisionFrance";
 import QuizSwissCantons from "./pages/QuizSwissCantons";
 import { useAuth } from "./context/AuthContext";
+
+const QuizFrancePhysical = lazy(() => import("./pages/QuizFrancePhysical"));
+const RevisionFrance = lazy(() => import("./pages/RevisionFrance"));
 
 function AuthRequired({ children }: { children: ReactNode }) {
     const { user, loading } = useAuth();
@@ -121,10 +123,11 @@ function App() {
                 <Route path="/my-quizzes" element={<AuthRequired><Navigate to="/#mes-quiz" replace /></AuthRequired>} />
                 <Route path="/edit-quiz/:id" element={<AuthRequired><EditQuiz /></AuthRequired>} />
                 <Route path="/revision" element={<RevisionList />} />
-                <Route path="/revision-france" element={<RevisionFrance />} />
+                <Route path="/revision-france" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionFrance /></Suspense>} />
                 <Route path="/quiz-france-type" element={<FranceQuizType />} />
                 <Route path="/quiz-france-depts" element={<QuizFranceDepts />} />
                 <Route path="/quiz-france-regions" element={<QuizFranceRegions />} />
+                <Route path="/quiz-france-physical" element={<Suspense fallback={<p className="loading-state">Chargement du quiz…</p>}><QuizFrancePhysical /></Suspense>} />
                 <Route path="/quiz-swiss-cantons" element={<QuizSwissCantons />} />
                 <Route path="/404" element={<NotFound />} />
                 <Route path="*" element={<Navigate to="/404" replace />} />

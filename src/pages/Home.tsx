@@ -14,6 +14,8 @@ const franceModes = [
     { icon: "🗺️", title: "Départements", text: "Retrouve le département colorié sur la carte.", route: "/quiz-type?france=departments" },
     { icon: "📍", title: "Préfectures", text: "Retrouve la préfecture du département affiché.", route: "/quiz-type?france=prefectures" },
     { icon: "🧭", title: "Régions", text: "Identifie la région colorée sur la carte de France.", route: "/quiz-type?france=regions" },
+    { icon: String.fromCodePoint(0x1f3d4, 0xfe0f), title: "Chaînes de montagnes", text: "Identifie les principaux reliefs sur une carte physique de France.", route: "/quiz-type?france=mountains" },
+    { icon: String.fromCodePoint(0x1f30a), title: "Fleuves", text: "Retrouve les principaux fleuves sur une carte de France.", route: "/quiz-type?france=rivers" },
     { icon: "🧠", title: "Révision France", text: "Revois les codes, préfectures et régions à ton rythme.", route: "/revision-france" },
 ];
 
