@@ -16,6 +16,7 @@ const CONTINENTS = [
     { code: "South America", label: "Amérique du Sud" },
     { code: "Oceania", label: "Océanie" },
 ];
+const NATIVE_FRANCE_QUIZ_KEYS = ["france_departements", "france_identification", "france_regions"];
 
 function nextTarget(bestPercent: number) {
     if (bestPercent >= 100) return 100;
@@ -98,6 +99,12 @@ export default function PlayerProgress({ userId }: { userId: string }) {
     const franceStats = stats
         .filter(item => item.quiz_key.startsWith("france_") || item.quiz_key === "personnalise_france")
         .sort((a, b) => (QUIZ_STAT_LABELS[a.quiz_key] ?? a.quiz_key).localeCompare(QUIZ_STAT_LABELS[b.quiz_key] ?? b.quiz_key, "fr"));
+    const franceRecords: { quizKey: string; stat: MyQuizStat | null }[] = [
+        ...franceStats.map(stat => ({ quizKey: stat.quiz_key, stat })),
+        ...NATIVE_FRANCE_QUIZ_KEYS
+            .filter(quizKey => !franceStats.some(stat => stat.quiz_key === quizKey))
+            .map(quizKey => ({ quizKey, stat: null })),
+    ].sort((a, b) => (QUIZ_STAT_LABELS[a.quizKey] ?? a.quizKey).localeCompare(QUIZ_STAT_LABELS[b.quizKey] ?? b.quizKey, "fr"));
     const goals = [...stats]
         .filter(item => item.quiz_key !== "capitales_monde" && !item.quiz_key.startsWith("france_") && item.quiz_key !== "personnalise_france")
         .sort((a, b) => b.best_percent - a.best_percent || b.attempt_count - a.attempt_count);
@@ -145,11 +152,17 @@ export default function PlayerProgress({ userId }: { userId: string }) {
                 <h3 id="france-records-title">Quiz de France</h3>
                 {loadingStats ? <div className="player-progress-loading" aria-label="Chargement des records France"><span /><span /><span /></div>
                     : statsError ? <p className="player-progress-message">Impossible de charger les records France pour le moment.</p>
-                        : franceStats.length > 0 ? (
+                        : franceRecords.length > 0 ? (
                             <div className="player-goals-grid">
-                                {franceStats.map(stat => <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />)}
+                                {franceRecords.map(({ quizKey, stat }) => stat
+                                    ? <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />
+                                    : <article className="player-goal-card player-france-mode-empty" key={quizKey}>
+                                        <div className="player-goal-card-top"><strong>{QUIZ_STAT_LABELS[quizKey] ?? quizKey}</strong><span>—</span></div>
+                                        <p>Pas encore joué</p>
+                                        <small>Joue une partie pour enregistrer ton record.</small>
+                                    </article>)}
                             </div>
-                        ) : <p className="player-france-empty">Joue un quiz de France pour afficher tes records ici.</p>}
+                        ) : null}
             </section>
 
             {!loadingStats && !statsError && goals.length > 0 && (

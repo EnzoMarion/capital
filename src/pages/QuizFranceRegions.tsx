@@ -110,6 +110,31 @@ export default function QuizFranceRegions() {
         setShowCorrection(true);
     }
 
+    function submitMapAnswer() {
+        if (!region || !selectedMapCode || showCorrection) return;
+        const chosen = departments.find(item => normalizeDepartmentCode(item.code) === normalizeDepartmentCode(selectedMapCode));
+        const isCorrect = region.departmentCodes.some(code => normalizeDepartmentCode(code) === normalizeDepartmentCode(selectedMapCode));
+        setAnswer(chosen?.nom ?? selectedMapCode);
+        setAnswers(previous => [...previous, { question: `Localiser la rÃ©gion ${region.name}`, userAnswer: chosen?.nom ?? selectedMapCode, correctAnswer: region.name, isCorrect }]);
+        setShowCorrection(true);
+    }
+
+    function handleEnterKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+        if (event.key !== "Enter" || event.repeat) return;
+        if (showCorrection) {
+            event.preventDefault();
+            next();
+        } else if (mode === "input") {
+            event.preventDefault();
+            submit(answer);
+        } else if (mode === "map" && selectedMapCode) {
+            const focusedMapCode = (event.target as HTMLElement).dataset.mapCode;
+            if (focusedMapCode && normalizeDepartmentCode(focusedMapCode) !== normalizeDepartmentCode(selectedMapCode)) return;
+            event.preventDefault();
+            submitMapAnswer();
+        }
+    }
+
     function next() {
         if (current === order.length - 1) { setFinished(true); return; }
         setCurrent(index => index + 1);
@@ -140,18 +165,11 @@ export default function QuizFranceRegions() {
         const latestMapAnswer = answers[answers.length - 1];
         const selectedRegionCodes = pickedDepartment?.region ? departments.filter(item => item.region === pickedDepartment.region).map(item => item.code) : [];
         const revealCorrect = showCorrection && !latestMapAnswer?.isCorrect;
-        return <main className="map-guess-screen france-map-guess-screen">
+        return <main className="map-guess-screen france-map-guess-screen" onKeyDown={handleEnterKeyDown}>
             <div className="map-guess-heading"><p className="section-kicker">France · Carte muette · Régions</p><h1>Localise cette région</h1><p><strong>{region.name}</strong></p></div>
             <div className="map-guess-france-map"><CarteFranceDept highlight={selectedRegionCodes} answerHighlight={revealCorrect ? region.departmentCodes : undefined} hideHighlightName onSelect={showCorrection ? undefined : setSelectedMapCode} /></div>
             <div className="map-guess-controls"><span className="map-guess-picked" aria-live="polite">{selectedMapCode ? "Région présélectionnée" : "Touchez un département de la région"}</span><button type="button" className="map-guess-clear" disabled={!selectedMapCode || showCorrection} onClick={() => setSelectedMapCode(null)}>Effacer</button>
-                {!showCorrection ? <button type="button" className="primary-btn" disabled={!selectedMapCode} onClick={() => {
-                    if (!selectedMapCode) return;
-                    const chosen = departments.find(item => normalizeDepartmentCode(item.code) === normalizeDepartmentCode(selectedMapCode));
-                    const isCorrect = region.departmentCodes.some(code => normalizeDepartmentCode(code) === normalizeDepartmentCode(selectedMapCode));
-                    setAnswer(chosen?.nom ?? selectedMapCode);
-                    setAnswers(previous => [...previous, { question: `Localiser la région ${region.name}`, userAnswer: chosen?.nom ?? selectedMapCode, correctAnswer: region.name, isCorrect }]);
-                    setShowCorrection(true);
-                }}>Valider</button> : <button ref={nextButtonRef} type="button" className="primary-btn" onClick={next}>{current === order.length - 1 ? "Voir le résultat" : "Suivant"}</button>}
+                {!showCorrection ? <button type="button" className="primary-btn" disabled={!selectedMapCode} onClick={submitMapAnswer}>Valider</button> : <button ref={nextButtonRef} type="button" className="primary-btn" onClick={next}>{current === order.length - 1 ? "Voir le résultat" : "Suivant"}</button>}
             </div>
             {showCorrection && <p className={`quiz-correction ${latestMapAnswer?.isCorrect ? "correct" : "wrong"}`} role="status">{latestMapAnswer?.isCorrect ? "Bonne réponse !" : <>La région était <strong>{region.name}</strong>.</>}</p>}
             <div className="map-guess-progress">Question {current + 1} sur {order.length} · {answers.filter(item => item.isCorrect).length} bonne{answers.filter(item => item.isCorrect).length === 1 ? "" : "s"} réponse{answers.filter(item => item.isCorrect).length === 1 ? "" : "s"}</div>
@@ -159,7 +177,7 @@ export default function QuizFranceRegions() {
     }
 
     return (
-        <main className="quizfr-wrapper france-game-card">
+        <main className="quizfr-wrapper france-game-card" onKeyDown={handleEnterKeyDown}>
             <p className="section-kicker">France · Régions · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
             <h1>Quelle région est coloriée ?</h1>
             <div className="france-quiz-layout">

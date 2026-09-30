@@ -1081,3 +1081,5 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .france-overseas-inset.selected { border-color: rgba(172,155,255,.6); background: rgba(139,117,237,.14); }
 .france-overseas-inset.selected span { color: #ded6ff; }
+.player-france-mode-empty { display: flex; min-height: 112px; flex-direction: column; justify-content: center; gap: 6px; }
+.player-france-mode-empty .player-goal-card-top span { color: #aaa4c4; }

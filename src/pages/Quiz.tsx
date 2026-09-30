@@ -376,8 +376,7 @@ export default function Quiz() {
         setShowCorrection(true);
     }
 
-    function handleSubmit(e: React.FormEvent) {
-        e.preventDefault();
+    function validateAnswer() {
         if (showCorrection) return;
         if (customQuestions) {
             submitCustomAnswer(userAnswer);
@@ -393,6 +392,11 @@ export default function Quiz() {
         setAnswers(previous => [...previous, { country, user: userAnswer, isCorrect: correct, questionType: euMode ? "annee_eu" : flagsMode ? "drapeau" : "capitale" }]);
         if (correct) setScore(previous => previous + 1);
         setShowCorrection(true);
+    }
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        validateAnswer();
     }
 
     function handleMapSubmit() {
@@ -442,10 +446,17 @@ export default function Quiz() {
         setTimeout(() => { inputRef.current?.focus(); }, 0);
     }
 
-    function handleKeyDown(e: React.KeyboardEvent) {
-        if (showCorrection && (e.key === "Enter" || e.key === " ")) {
+    function handleKeyDown(e: React.KeyboardEvent<HTMLElement>) {
+        if (e.key !== "Enter" || e.repeat) return;
+        if (showCorrection) {
             e.preventDefault();
             handleNext();
+        } else if (typeParam === "input") {
+            e.preventDefault();
+            validateAnswer();
+        } else if (isMapMode && selectedMapCode) {
+            e.preventDefault();
+            handleMapSubmit();
         }
     }
 
@@ -553,7 +564,7 @@ export default function Quiz() {
     const revealedMapCode = isMapMode && showCorrection && !lastAnswerCorrect ? country?.code ?? "" : "";
 
     return (
-        <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""} ${isMapMode ? "map-guess-world-screen" : ""}`}>
+        <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""} ${isMapMode ? "map-guess-world-screen" : ""}`} onKeyDown={handleKeyDown}>
             <div className={`quiz-content-inner ${customQuestions ? "custom-quiz-layout" : ""} ${isMapMode ? "map-guess-world-layout" : ""}`}>
                 {(!isMapMode && country && ((customQuestions && questionType === "drapeau") || (!customQuestions && flagsMode))) && (
                     <div className={`flag-wrapper ${customQuestions ? "custom-quiz-visual france-map-panel" : ""}`}>
@@ -578,7 +589,6 @@ export default function Quiz() {
                 <form
                     className={`quiz-card ${typeParam === "input" ? "input-mode" : ""} ${isMapMode ? "map-guess-answer-card" : ""} ${customQuestions ? "custom-quiz-answer france-answer-panel" : ""}`}
                     onSubmit={typeParam !== "input" ? e => e.preventDefault() : handleSubmit}
-                    onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
                     <h2>
