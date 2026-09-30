@@ -17,7 +17,8 @@ const CONTINENTS = [
     { code: "Oceania", label: "Océanie" },
 ];
 const NATIVE_FRANCE_QUIZ_KEYS = ["france_departements", "france_identification", "france_regions", "france_mountains", "france_rivers"];
-const NATIVE_SWISS_QUIZ_KEYS = ["switzerland_cantons", "switzerland_chief_towns"];
+const NATIVE_SWISS_QUIZ_KEYS = ["switzerland_cantons", "switzerland_canton_flags", "switzerland_chief_towns", "personnalise_suisse"];
+const NATIVE_USA_QUIZ_KEYS = ["usa_states", "usa_state_flags", "usa_state_capitals", "personnalise_usa"];
 
 function nextTarget(bestPercent: number) {
     if (bestPercent >= 100) return 100;
@@ -58,7 +59,7 @@ function QuizRecordCard({ stat }: { stat: MyQuizStat }) {
     </article>;
 }
 
-export default function PlayerProgress({ userId }: { userId: string }) {
+export default function PlayerProgress({ userId, onGlobalRate }: { userId: string; onGlobalRate?: (rate: number | null) => void }) {
     const [stats, setStats] = useState<MyQuizStat[]>([]);
     const [loadingStats, setLoadingStats] = useState(true);
     const [statsError, setStatsError] = useState(false);
@@ -100,6 +101,9 @@ export default function PlayerProgress({ userId }: { userId: string }) {
         const bestTotal = stats.reduce((sum, item) => sum + item.best_total, 0);
         return { attempts, bestTotal, successRate: bestTotal ? Math.floor(bestScore * 100 / bestTotal) : null };
     }, [stats]);
+    useEffect(() => {
+        onGlobalRate?.(loadingStats || statsError ? null : totals.successRate);
+    }, [loadingStats, onGlobalRate, statsError, totals.successRate]);
     const franceStats = stats
         .filter(item => item.quiz_key.startsWith("france_") || item.quiz_key === "personnalise_france")
         .sort((a, b) => (QUIZ_STAT_LABELS[a.quiz_key] ?? a.quiz_key).localeCompare(QUIZ_STAT_LABELS[b.quiz_key] ?? b.quiz_key, "fr"));
@@ -116,8 +120,15 @@ export default function PlayerProgress({ userId }: { userId: string }) {
             .filter(quizKey => !swissStats.some(stat => stat.quiz_key === quizKey))
             .map(quizKey => ({ quizKey, stat: null })),
     ];
+    const usaStats = stats.filter(item => NATIVE_USA_QUIZ_KEYS.includes(item.quiz_key));
+    const usaRecords: { quizKey: string; stat: MyQuizStat | null }[] = [
+        ...usaStats.map(stat => ({ quizKey: stat.quiz_key, stat })),
+        ...NATIVE_USA_QUIZ_KEYS
+            .filter(quizKey => !usaStats.some(stat => stat.quiz_key === quizKey))
+            .map(quizKey => ({ quizKey, stat: null })),
+    ];
     const goals = [...stats]
-        .filter(item => item.quiz_key !== "capitales_monde" && !item.quiz_key.startsWith("france_") && !item.quiz_key.startsWith("switzerland_") && !item.quiz_key.startsWith("personnalise_"))
+        .filter(item => item.quiz_key !== "capitales_monde" && !item.quiz_key.startsWith("france_") && !item.quiz_key.startsWith("switzerland_") && !item.quiz_key.startsWith("usa_") && !item.quiz_key.startsWith("personnalise_"))
         .sort((a, b) => b.best_percent - a.best_percent || b.attempt_count - a.attempt_count);
     const answersByCountry = useMemo(
         () => new Map<string, boolean>(countryProgress.map(answer => [answer.country_code, answer.is_correct] as const)),
@@ -189,6 +200,21 @@ export default function PlayerProgress({ userId }: { userId: string }) {
                     : statsError ? <p className="player-progress-message">Impossible de charger les records Suisse pour le moment.</p>
                         : <div className="player-goals-grid">
                             {swissRecords.map(({ quizKey, stat }) => stat
+                                ? <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />
+                                : <article className="player-goal-card player-france-mode-empty" key={quizKey}>
+                                    <div className="player-goal-card-top"><strong>{QUIZ_STAT_LABELS[quizKey] ?? quizKey}</strong><span>—</span></div>
+                                    <p>Pas encore joué</p>
+                                    <small>Joue une partie pour enregistrer ton record.</small>
+                                </article>)}
+                        </div>}
+            </section>
+
+            <section className="player-usa-records" aria-labelledby="usa-records-title">
+                <h3 id="usa-records-title">Quiz des États-Unis</h3>
+                {loadingStats ? <div className="player-progress-loading" aria-label="Chargement des records États-Unis"><span /><span /><span /></div>
+                    : statsError ? <p className="player-progress-message">Impossible de charger les records des États-Unis pour le moment.</p>
+                        : <div className="player-goals-grid">
+                            {usaRecords.map(({ quizKey, stat }) => stat
                                 ? <QuizRecordCard key={`${stat.quiz_key}:${stat.scope_key}`} stat={stat} />
                                 : <article className="player-goal-card player-france-mode-empty" key={quizKey}>
                                     <div className="player-goal-card-top"><strong>{QUIZ_STAT_LABELS[quizKey] ?? quizKey}</strong><span>—</span></div>

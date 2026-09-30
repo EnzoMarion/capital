@@ -5,11 +5,13 @@ import {
     COUNTRY_QUESTION_MODES,
     FRANCE_QUESTION_MODES,
     SWISS_QUESTION_MODES,
+    USA_QUESTION_MODES,
     getCustomAnswerValue,
     type CustomQuestion,
     type CustomQuestionType,
 } from "../utils/customQuizModes";
 import { SWISS_CANTONS } from "../utils/swissCantons";
+import { US_STATES } from "../utils/usStates";
 
 type Department = { code: string; nom: string; cheflieu: string; region: string | null };
 const CONTINENTS = [
@@ -77,9 +79,9 @@ export default function CustomQuizBuilder({
         return SWISS_CANTONS.filter(canton => !needle || normalize(`${canton.code} ${canton.name} ${canton.aliases.join(" ")}`).includes(needle));
     }, [search]);
 
-    function isSelected(type: CustomQuestionType, code: string, group: "pays" | "france" | "suisse") {
+    function isSelected(type: CustomQuestionType, code: string, group: "pays" | "france" | "suisse" | "usa") {
         return selectedQuestions.some(question => question.question_type === type &&
-            (group === "pays" ? question.country_code === code : group === "france" ? question.department_code === code : question.canton_code === code));
+            (group === "pays" ? question.country_code === code : group === "france" ? question.department_code === code : group === "suisse" ? question.canton_code === code : question.state_code === code));
     }
 
     function toggleCountry(country: Country, type: CustomQuestionType) {
@@ -108,6 +110,20 @@ export default function CustomQuizBuilder({
             return [...previous, { canton_code: canton.code, canton_name: canton.name, question_type: type }];
         });
     }
+
+    function toggleUSState(state: (typeof US_STATES)[number], type: CustomQuestionType) {
+        setSelectedQuestions(previous => {
+            if (previous.some(question => question.question_type === type && question.state_code === state.code)) {
+                return previous.filter(question => !(question.question_type === type && question.state_code === state.code));
+            }
+            return [...previous, { state_code: state.code, state_name: state.name, question_type: type }];
+        });
+    }
+
+    const filteredUSStates = useMemo(() => {
+        const needle = normalize(search.trim());
+        return US_STATES.filter(state => !needle || normalize(`${state.code} ${state.name} ${state.capital} ${(state.aliases ?? []).join(" ")}`).includes(needle));
+    }, [search]);
 
     return (
         <div className="custom-quiz-builder">
@@ -187,6 +203,24 @@ export default function CustomQuizBuilder({
                                     <td><strong>{canton.code}</strong> · {canton.name}</td>
                                     {SWISS_QUESTION_MODES.map(mode => <td key={mode.key}>
                                         <input type="checkbox" className="quiz-create-checkbox" aria-label={`${mode.label} · ${canton.name}`} checked={isSelected(mode.key, canton.code, "suisse")} onChange={() => toggleSwissCanton(canton, mode.key)} />
+                                    </td>)}
+                                </tr>)}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+
+            <details className="custom-question-group custom-question-accordion">
+                <summary className="custom-group-heading"><div><p className="section-kicker">04 · États-Unis</p><h2>Questions par État</h2></div><span className="custom-group-summary-meta"><span>{filteredUSStates.length} États</span><i aria-hidden="true" /></span></summary>
+                <div className="quiz-create-section custom-table-scroll">
+                    <table className="quiz-create-table custom-question-table">
+                        <thead><tr><th>État</th>{USA_QUESTION_MODES.map(mode => <th key={mode.key}>{mode.label}</th>)}</tr></thead>
+                        <tbody>
+                            {filteredUSStates.length === 0 ? <tr><td colSpan={USA_QUESTION_MODES.length + 1} className="quiz-create-empty">Aucun État correspondant</td></tr>
+                                : filteredUSStates.map(state => <tr key={state.code}>
+                                    <td><strong>{state.code}</strong> · {state.name}</td>
+                                    {USA_QUESTION_MODES.map(mode => <td key={mode.key}>
+                                        <input type="checkbox" className="quiz-create-checkbox" aria-label={`${mode.label} · ${state.name}`} checked={isSelected(mode.key, state.code, "usa")} onChange={() => toggleUSState(state, mode.key)} />
                                     </td>)}
                                 </tr>)}
                         </tbody>

@@ -22,6 +22,8 @@ import { useAuth } from "./context/AuthContext";
 
 const QuizFrancePhysical = lazy(() => import("./pages/QuizFrancePhysical"));
 const RevisionFrance = lazy(() => import("./pages/RevisionFrance"));
+const QuizUSStates = lazy(() => import("./pages/QuizUSStates"));
+const RevisionRegional = lazy(() => import("./pages/RevisionRegional"));
 
 function AuthRequired({ children }: { children: ReactNode }) {
     const { user, loading } = useAuth();
@@ -124,11 +126,14 @@ function App() {
                 <Route path="/edit-quiz/:id" element={<AuthRequired><EditQuiz /></AuthRequired>} />
                 <Route path="/revision" element={<RevisionList />} />
                 <Route path="/revision-france" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionFrance /></Suspense>} />
+                <Route path="/revision-switzerland" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionRegional region="switzerland" /></Suspense>} />
+                <Route path="/revision-usa" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionRegional region="usa" /></Suspense>} />
                 <Route path="/quiz-france-type" element={<FranceQuizType />} />
                 <Route path="/quiz-france-depts" element={<QuizFranceDepts />} />
                 <Route path="/quiz-france-regions" element={<QuizFranceRegions />} />
                 <Route path="/quiz-france-physical" element={<Suspense fallback={<p className="loading-state">Chargement du quiz…</p>}><QuizFrancePhysical /></Suspense>} />
                 <Route path="/quiz-swiss-cantons" element={<QuizSwissCantons />} />
+                <Route path="/quiz-us-states" element={<Suspense fallback={<p className="loading-state">Chargement du quiz…</p>}><QuizUSStates /></Suspense>} />
                 <Route path="/404" element={<NotFound />} />
                 <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>

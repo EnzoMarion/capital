@@ -24,8 +24,13 @@ export const QUIZ_STAT_LABELS: Record<string, string> = {
     france_rivers: "Fleuves français",
     switzerland_cantons: "Cantons suisses",
     switzerland_chief_towns: "Chefs-lieux suisses",
+    switzerland_canton_flags: "Drapeaux des cantons suisses",
+    usa_states: "Identification des États américains",
+    usa_state_capitals: "Capitales des États américains",
+    usa_state_flags: "Drapeaux des États américains",
     personnalise_france: "Quiz personnalisés France",
     personnalise_suisse: "Quiz personnalisés Suisse",
+    personnalise_usa: "Quiz personnalisés États-Unis",
     personnalise: "Quiz personnalisés",
 };
 

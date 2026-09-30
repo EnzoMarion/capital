@@ -943,6 +943,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--gold); }
 .custom-quiz-layout .france-custom-map .carte-fr-dept-stack { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .custom-quiz-layout .france-custom-map .carte-fr-dept-stack svg { width: 100%; max-height: min(46svh, 460px); }
 .custom-quiz-layout .flag-wrapper.custom-quiz-visual { min-height: 280px; display: grid; place-items: center; margin: 0; padding: 18px; border: 1px solid rgba(172,155,255,.22); border-radius: 17px; background: linear-gradient(145deg, rgba(19,17,42,.96), rgba(34,28,68,.94)); }
+.custom-quiz-layout .territory-flag-prompt.custom-quiz-visual { min-height: 280px; display: grid; place-items: center; margin: 0; padding: 18px; border: 1px solid rgba(172,155,255,.22); border-radius: 17px; background: linear-gradient(145deg, rgba(19,17,42,.96), rgba(34,28,68,.94)); }
 .custom-quiz-layout .quiz-card.custom-quiz-answer { min-width: 0; width: 100%; margin: 0; padding: clamp(18px, 2.4vw, 32px); text-align: left; }
 .custom-quiz-layout .custom-quiz-answer h2 { text-align: left; }
 .custom-quiz-layout .custom-quiz-answer .quiz-country { margin: 5px 0 18px; text-align: left; }
@@ -998,6 +999,8 @@ input[type=checkbox], input[type=radio] { accent-color: var(--gold); }
   .custom-quiz-layout .custom-quiz-map-panel .carte-map,
   .custom-quiz-layout .france-custom-map .carte-fr-dept-stack svg { max-height: min(36svh, 320px); }
   .custom-quiz-layout .flag-wrapper.custom-quiz-visual { min-height: 150px; }
+  .custom-quiz-layout .territory-flag-prompt.custom-quiz-visual { min-height: 150px; }
+  .custom-quiz-layout .us-custom-map .us-map-svg { max-height: min(36svh, 320px); }
   .custom-quiz-layout .quiz-card.custom-quiz-answer { width: min(100%, 560px); margin: 0 auto; padding: 18px 16px; }
   .dashboard-quizzes .quizzes-ul { grid-template-columns: 1fr; }
   .home-custom-quizzes .home-section-heading { align-items: flex-start; flex-direction: column; }
@@ -1143,6 +1146,56 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .map-guess-swiss-map .swiss-map-svg { height: auto; }
   .swiss-map-credit { font-size: .56rem; }
 }
+
+/* Dashboard progress globe */
+.home-game-dashboard .home-hero { display: flex; align-items: center; justify-content: space-between; gap: 30px; }
+.home-hero-copy { position: relative; z-index: 2; flex: 1 1 auto; min-width: 0; max-width: 760px; }
+.home-hero-copy h1 { max-width: 720px; }
+.home-hero-copy > p:not(.hero-kicker) { max-width: 650px; }
+.hero-atlas-orbit {
+  position: relative; z-index: 2; display: grid; place-items: center; flex: 0 0 190px; width: 190px; height: 190px;
+  margin-right: 18px; border: 1px solid rgba(218,204,255,.18); border-radius: 50%;
+  background: radial-gradient(circle, rgba(126,103,236,.17), rgba(22,19,54,.16) 66%, transparent 68%);
+  box-shadow: 0 0 50px rgba(135,111,255,.12), inset 0 0 26px rgba(160,144,255,.08);
+  animation: atlas-globe-float 7s ease-in-out infinite;
+}
+.hero-atlas-orbit::before, .hero-atlas-orbit::after {
+  content: ""; position: absolute; border: 1px solid rgba(219,207,255,.32); border-radius: 50%; pointer-events: none;
+}
+.hero-atlas-orbit::before { inset: 13px; transform: rotate(-24deg) scaleY(.42); }
+.hero-atlas-orbit::after { inset: 27px; border-color: rgba(247,215,134,.25); transform: rotate(53deg) scaleY(.48); }
+.hero-atlas-orbit-core {
+  position: relative; display: grid; align-content: center; justify-items: center; gap: 4px; width: 112px; height: 112px;
+  border: 1px solid rgba(242,232,255,.17); border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, rgba(153,133,255,.36), rgba(39,32,87,.94) 70%);
+  box-shadow: 0 0 26px rgba(132,111,255,.3), inset 0 1px rgba(255,255,255,.15);
+}
+.hero-atlas-orbit-core::before {
+  content: ""; position: absolute; inset: -5px; border-radius: inherit;
+  background: conic-gradient(#f4d783 var(--hero-rate, 0%), rgba(230,222,255,.12) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1px));
+}
+.hero-atlas-orbit-core strong { color: #fff; font-size: 1.72rem; letter-spacing: -.05em; }
+.hero-atlas-orbit-core small { color: #d7d0f2; font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; }
+.hero-atlas-orbit .hero-orbit { z-index: 3; }
+.hero-atlas-orbit .hero-orbit-one { top: 11%; right: 17%; width: 7px; height: 7px; border-radius: 50%; }
+.hero-atlas-orbit .hero-orbit-two { right: 7%; bottom: 34%; width: 5px; height: 5px; }
+@keyframes atlas-globe-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+@media (max-width: 700px) {
+  .home-game-dashboard .home-hero { align-items: flex-start; gap: 0; }
+  .home-hero-copy { max-width: none; }
+  .hero-atlas-orbit { position: absolute; top: auto; right: 15px; bottom: 14px; width: 92px; height: 92px; margin: 0; opacity: .96; }
+  .hero-atlas-orbit::before { inset: 8px; }
+  .hero-atlas-orbit::after { inset: 15px; }
+  .hero-atlas-orbit-core { width: 58px; height: 58px; }
+  .hero-atlas-orbit-core strong { font-size: .95rem; }
+  .hero-atlas-orbit-core small { max-width: 49px; font-size: .43rem; text-align: center; }
+  .hero-atlas-orbit .hero-orbit-one { top: 12%; right: 20%; }
+  .hero-atlas-orbit .hero-orbit-two { right: 7%; bottom: 34%; }
+  .home-hero-copy > p:not(.hero-kicker) { max-width: calc(100% - 72px); padding-bottom: 70px; }
+}
+@media (prefers-reduced-motion: reduce) { .hero-atlas-orbit { animation: none; } }
 .player-progress-accordion > summary,
 .custom-quiz-category > summary { list-style: none; }
 .player-progress-accordion > summary::-webkit-details-marker,
@@ -1222,4 +1275,47 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .france-physical-map-svg { max-height: min(38svh, 340px); }
   .france-physical-map-stack { padding: 7px; }
   .france-physical-map-legend { margin-top: 2px; font-size: .65rem; }
+}
+
+/* United States state and capital quizzes */
+.heading-us-flag { display: inline-flex; width: 1.05em; height: .72em; vertical-align: .02em; }
+.heading-us-flag svg, .home-game-dashboard .mode-icon .us-flag-icon { display: block; width: 100%; height: 100%; }
+.home-game-dashboard .mode-icon .us-flag-icon { width: 30px; height: 21px; }
+.player-usa-records { margin: 0 0 14px; }
+.player-usa-records h3 { margin: 0 0 8px; color: #eeeaff; font-size: .94rem; }
+.player-usa-records .player-goals-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.territory-flag-quiz-layout { display: block; }
+.territory-flag-quiz-layout .france-answer-panel { width: min(100%, 620px); margin-inline: auto; }
+.territory-flag-prompt { display: flex; justify-content: center; margin: 0 0 18px; }
+.territory-flag-img { display: block; width: min(240px, 62vw); height: 156px; object-fit: contain; border: 1px solid rgba(172,155,255,.22); border-radius: 14px; background: #fff; box-shadow: 0 10px 28px rgba(0,0,0,.25); }
+.territory-flag-unavailable { width: min(240px, 62vw); min-height: 112px; display: grid; place-items: center; padding: 16px; border: 1px dashed rgba(172,155,255,.3); border-radius: 14px; color: #aaa4c4; text-align: center; font-size: .85rem; }
+.regional-revision-card { align-items: center; }
+.regional-revision-copy { min-width: 0; flex: 1 1 auto; }
+.regional-revision-card .territory-flag-img { width: 74px; height: 52px; flex: 0 0 74px; border-radius: 7px; box-shadow: none; }
+.regional-revision-card .territory-flag-unavailable { width: 74px; min-height: 48px; flex: 0 0 74px; padding: 5px; font-size: .6rem; }
+.us-game-card { max-width: 1220px; }
+.us-quiz-layout .us-map-svg { max-height: min(52svh, 500px); }
+.us-map-stack { width: min(100%, 820px); margin: 0 auto; padding: clamp(6px, 1.2vw, 14px); border: 1px solid rgba(172,155,255,.15); border-radius: 17px; background: linear-gradient(150deg, rgba(35,31,71,.88), rgba(19,19,42,.92)); box-shadow: inset 0 1px rgba(255,255,255,.04), 0 12px 28px rgba(0,0,0,.16); }
+.us-map-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.us-state-shape { fill: #5b548b; stroke: #d7d0fb; stroke-width: 1.1; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: fill .16s ease, filter .16s ease, stroke .16s ease; }
+.us-state-target { fill: #8b79ef; stroke: #f8f5ff; stroke-width: 1.8; }
+.us-state-answer { fill: #52d49a; stroke: #16724e; stroke-width: 2.8; }
+.us-state-pick { fill: #f7c948; stroke: #5145ba; stroke-width: 2.8; }
+.us-map-interactive .us-state-shape { cursor: pointer; }
+.us-map-interactive .us-state-shape:hover { filter: brightness(1.25); }
+.us-map-interactive .us-state-shape:focus-visible { outline: 3px solid #f7c948; outline-offset: 2px; }
+.us-map-credit { display: block; margin-top: 4px; color: #aaa4c4; font-size: .62rem; text-align: right; }
+.map-guess-us-map { width: min(100%, 1380px); min-height: 0; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; }
+.map-guess-us-map .us-map-stack { width: min(100%, 1250px); max-width: none; padding: 5px; border: 0; background: transparent; box-shadow: none; }
+.map-guess-us-map .us-map-svg { width: 100%; height: min(70svh, 900px); max-height: none; }
+.us-map-guess-screen .map-guess-heading strong { color: #d8ceff; font-size: 1.1em; }
+@media (max-width: 800px) {
+  .player-usa-records .player-goals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .us-quiz-layout .us-map-svg { max-height: min(36svh, 310px); }
+  .map-guess-us-map { width: calc(100% + 12px); flex: 0 0 auto; overflow: visible; justify-content: center; margin-inline: -6px; }
+  .map-guess-us-map .us-map-stack { width: 100%; max-width: none; flex: 0 0 auto; padding: 0; }
+  .map-guess-us-map .us-map-svg { height: auto; }
+  .us-map-credit { font-size: .56rem; }
 }

@@ -8,7 +8,8 @@ export default function QuizTypeSelect() {
     const personalQuizId = params.get("quiz_id");
     const franceMode = params.get("france");
     const switzerlandMode = params.get("switzerland");
-    const showMap = !personalQuizId && (switzerlandMode === "cantons" || ["regions", "departments", "depts", "1"].includes(franceMode ?? ""));
+    const usaMode = params.get("usa");
+    const showMap = !personalQuizId && (switzerlandMode === "cantons" || usaMode === "states" || ["regions", "departments", "depts", "1"].includes(franceMode ?? ""));
 
     function selectType(type: AnswerMode) {
         const selectedType = type === "map" && !showMap ? "multiple" : type;
@@ -28,9 +29,14 @@ export default function QuizTypeSelect() {
             navigate(`${route}?type=${selectedType}${gameParam}`);
             return;
         }
-        if (switzerlandMode === "cantons" || switzerlandMode === "chief-towns") {
-            const gameParam = switzerlandMode === "chief-towns" ? "&game=chief-towns" : "";
+        if (switzerlandMode === "cantons" || switzerlandMode === "chief-towns" || switzerlandMode === "flags") {
+            const gameParam = switzerlandMode === "chief-towns" ? "&game=chief-towns" : switzerlandMode === "flags" ? "&game=flags" : "";
             navigate(`/quiz-swiss-cantons?type=${selectedType}${gameParam}`);
+            return;
+        }
+        if (usaMode === "states" || usaMode === "capitals" || usaMode === "flags") {
+            const gameParam = usaMode === "capitals" ? "&game=capitals" : usaMode === "flags" ? "&game=flags" : "";
+            navigate(`/quiz-us-states?type=${selectedType}${gameParam}`);
             return;
         }
         navigate(`/modes?${params.toString()}`);

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useQuizAttemptSave } from "../api/quizAttempts";
 import { CarteSuisseCantons } from "../components/CarteSuisseCantons";
+import { SwissCantonFlag } from "../components/TerritoryFlag";
 import { SWISS_CANTONS, cantonAnswerIsCorrect, chiefTownAnswerIsCorrect } from "../utils/swissCantons";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
 
@@ -21,7 +22,8 @@ export default function QuizSwissCantons() {
     const [searchParams] = useSearchParams();
     const requestedMode = searchParams.get("type");
     const chiefTownMode = searchParams.get("game") === "chief-towns";
-    const mode: AnswerMode = requestedMode === "input" ? "input" : requestedMode === "map" && !chiefTownMode ? "map" : "multiple";
+    const flagMode = searchParams.get("game") === "flags";
+    const mode: AnswerMode = requestedMode === "input" ? "input" : requestedMode === "map" && !chiefTownMode && !flagMode ? "map" : "multiple";
     const [order, setOrder] = useState<number[]>(() => shuffle(SWISS_CANTONS.map((_, index) => index)));
     const [current, setCurrent] = useState(0);
     const [answer, setAnswer] = useState("");
@@ -44,11 +46,11 @@ export default function QuizSwissCantons() {
     const attemptSave = useQuizAttemptSave({
         enabled: finished && answers.length > 0,
         userId: user?.id,
-        quizKey: chiefTownMode ? "switzerland_chief_towns" : "switzerland_cantons",
+        quizKey: flagMode ? "switzerland_canton_flags" : chiefTownMode ? "switzerland_chief_towns" : "switzerland_cantons",
         score: answers.filter(item => item.isCorrect).length,
         totalQuestions: answers.length,
-        scopeKey: chiefTownMode ? "26-chefs-lieux" : "26-cantons",
-        scopeLabel: chiefTownMode ? "Chefs-lieux des 26 cantons" : "Les 26 cantons",
+        scopeKey: flagMode ? "26-drapeaux" : chiefTownMode ? "26-chefs-lieux" : "26-cantons",
+        scopeLabel: flagMode ? "Les drapeaux des 26 cantons" : chiefTownMode ? "Chefs-lieux des 26 cantons" : "Les 26 cantons",
     });
 
     useEffect(() => {
@@ -61,7 +63,7 @@ export default function QuizSwissCantons() {
         setAnswer(value);
         const correctAnswer = displayedAnswer(canton);
         setAnswers(previous => [...previous, {
-            question: chiefTownMode ? `Chef-lieu du canton ${canton.name}` : `Canton ${canton.code}`,
+            question: flagMode ? `Drapeau du canton ${canton.name}` : chiefTownMode ? `Chef-lieu du canton ${canton.name}` : `Canton ${canton.code}`,
             userAnswer: value,
             correctAnswer,
             isCorrect: chiefTownMode ? chiefTownAnswerIsCorrect(value, canton) : cantonAnswerIsCorrect(value, canton),
@@ -120,7 +122,7 @@ export default function QuizSwissCantons() {
     }
 
     if (!canton && !finished) return <p className="empty-state">Aucun canton disponible.</p>;
-    if (finished) return <FranceQuizResult title={chiefTownMode ? "Chefs-lieux suisses" : "Cantons suisses"} answers={answers} onRestart={restart}
+    if (finished) return <FranceQuizResult title={flagMode ? "Drapeaux des cantons suisses" : chiefTownMode ? "Chefs-lieux suisses" : "Cantons suisses"} answers={answers} onRestart={restart}
         saveStatus={attemptSave.status} saveError={attemptSave.errorMessage} onRetrySave={attemptSave.retry} />;
 
     if (mode === "map") {
@@ -149,12 +151,13 @@ export default function QuizSwissCantons() {
         </main>;
     }
 
-    return <main className="quizfr-wrapper france-game-card swiss-game-card" onKeyDown={handleEnter}>
-        <p className="section-kicker">Suisse · {chiefTownMode ? "Chefs-lieux" : "Cantons"} · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
-        <h1>{chiefTownMode ? "Quel est le chef-lieu de ce canton ?" : "Quel canton est mis en évidence ?"}</h1>
-        <div className="france-quiz-layout swiss-quiz-layout">
-            <div className="france-map-panel"><CarteSuisseCantons highlight={canton.code} /></div>
+    return <main className={`quizfr-wrapper france-game-card swiss-game-card${flagMode ? " territory-flag-quiz-card" : ""}`} onKeyDown={handleEnter}>
+        <p className="section-kicker">Suisse · {flagMode ? "Drapeaux des cantons" : chiefTownMode ? "Chefs-lieux" : "Cantons"} · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
+        <h1>{flagMode ? "Quel canton est représenté par ce drapeau ?" : chiefTownMode ? "Quel est le chef-lieu de ce canton ?" : "Quel canton est mis en évidence ?"}</h1>
+        <div className={`france-quiz-layout swiss-quiz-layout${flagMode ? " territory-flag-quiz-layout" : ""}`}>
+            {!flagMode && <div className="france-map-panel"><CarteSuisseCantons highlight={canton.code} /></div>}
             <div className="france-answer-panel">
+                {flagMode && <div className="territory-flag-prompt"><SwissCantonFlag key={canton.code} canton={canton} /></div>}
                 {chiefTownMode && <p className="quizfr-question"><strong>{canton.name}</strong></p>}
                 {mode === "multiple" ? <div className="mc-choices france-mc-choices" aria-label={chiefTownMode ? "Choisis le chef-lieu" : "Choisis le canton"}>
                     {options.map(option => <button key={option.code} type="button"

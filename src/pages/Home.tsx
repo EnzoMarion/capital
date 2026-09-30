@@ -1,3 +1,4 @@
+import { useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PlayerProgress from "../components/PlayerProgress";
@@ -21,7 +22,16 @@ const franceModes = [
 
 const swissModes = [
     { icon: "switzerland", title: "Cantons suisses", text: "Retrouve les 26 cantons en QCM, saisie libre ou carte muette.", route: "/quiz-type?switzerland=cantons" },
+    { icon: "🚩", title: "Drapeaux des cantons", text: "Identifie les cantons suisses à partir de leurs drapeaux.", route: "/quiz-type?switzerland=flags" },
     { icon: "📍", title: "Chefs-lieux suisses", text: "Retrouve la ville principale à partir du canton affiché.", route: "/quiz-type?switzerland=chief-towns" },
+    { icon: "📚", title: "Révision Suisse", text: "Consulte les cantons, leurs drapeaux et leurs chefs-lieux.", route: "/revision-switzerland" },
+];
+
+const usModes = [
+    { icon: "usa", title: "États des États-Unis", text: "Identifie les 50 États en QCM, saisie libre ou sur une carte muette.", route: "/quiz-type?usa=states" },
+    { icon: "🚩", title: "Drapeaux des États", text: "Identifie les États américains à partir de leurs drapeaux.", route: "/quiz-type?usa=flags" },
+    { icon: "capitol", title: "Capitales des États", text: "Retrouve la capitale à partir de l’État affiché.", route: "/quiz-type?usa=capitals" },
+    { icon: "📚", title: "Révision États-Unis", text: "Consulte les États, leurs drapeaux et leurs capitales.", route: "/revision-usa" },
 ];
 
 function FlagIcon({ country }: { country: "france" | "eu" }) {
@@ -49,12 +59,22 @@ function SwissFlagIcon() {
     </svg>;
 }
 
+function USAFlagIcon() {
+    return <svg className="us-flag-icon" viewBox="0 0 38 26" aria-hidden="true" focusable="false">
+        <rect width="38" height="26" rx="3" fill="#fff" />
+        {[0, 4, 8, 12, 16, 20, 24].map(y => <rect key={y} y={y} width="38" height="2" fill="#c43b4a" />)}
+        <rect width="17" height="14" rx="1" fill="#244477" />
+        {[[3, 3], [8, 3], [13, 3], [5.5, 6.5], [10.5, 6.5], [3, 10], [8, 10], [13, 10]].map(([x, y], index) => <circle key={index} cx={x} cy={y} r=".8" fill="#fff" />)}
+        <rect x=".5" y=".5" width="37" height="25" rx="2.5" fill="none" stroke="rgba(255,255,255,.35)" />
+    </svg>;
+}
+
 function ModeCard({ icon, title, text, route }: (typeof worldModes)[number]) {
     const navigate = useNavigate();
     return (
         <button className="mode-card" onClick={() => navigate(route)}>
             <span className="mode-card-top">
-                <span className="mode-icon" aria-hidden="true">{icon === "eu" ? <FlagIcon country="eu" /> : icon === "switzerland" ? <SwissFlagIcon /> : icon}</span>
+                <span className="mode-icon" aria-hidden="true">{icon === "eu" ? <FlagIcon country="eu" /> : icon === "switzerland" ? <SwissFlagIcon /> : icon === "usa" ? <USAFlagIcon /> : icon === "capitol" ? String.fromCodePoint(0x1f3db, 0xfe0f) : icon}</span>
                 <span className="mode-card-copy">
                     <span className="mode-card-type">GÉOGRAPHIE</span>
                     <h3>{title}</h3>
@@ -70,18 +90,27 @@ function ModeCard({ icon, title, text, route }: (typeof worldModes)[number]) {
 export default function Home() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
+    const [globalRate, setGlobalRate] = useState<number | null>(null);
 
     return (
         <main className="home-wrapper home-game-dashboard">
             <section className="home-hero">
-                <p className="hero-kicker"><span aria-hidden="true">✦</span> ATLAS · GÉOGRAPHIE</p>
-                <h1>Le monde, la France et la Suisse, à portée de carte.</h1>
-                <p>Retrouve les capitales, découvre les drapeaux et révise les territoires, régions et cantons.</p>
-                <span className="hero-orbit hero-orbit-one" aria-hidden="true" />
-                <span className="hero-orbit hero-orbit-two" aria-hidden="true" />
+                <div className="home-hero-copy">
+                    <p className="hero-kicker"><span aria-hidden="true">✦</span> ATLAS · GÉOGRAPHIE</p>
+                    <h1>Voyage d’un continent à l’autre, carte après carte.</h1>
+                    <p>Capitales, drapeaux, régions et États : teste tes connaissances sur le monde, la France, la Suisse et les États-Unis.</p>
+                </div>
+                <div className="hero-atlas-orbit" role="img" aria-label={user ? `Réussite globale : ${globalRate === null ? "chargement" : `${globalRate} %`}` : "Explore les cartes du monde"}>
+                    <span className="hero-orbit hero-orbit-one" aria-hidden="true" />
+                    <span className="hero-orbit hero-orbit-two" aria-hidden="true" />
+                    <div className="hero-atlas-orbit-core" style={{ "--hero-rate": `${globalRate ?? 0}%` } as CSSProperties}>
+                        <strong>{user ? globalRate === null ? "…" : `${globalRate}%` : "ATLAS"}</strong>
+                        <small>{user ? "réussite globale" : "à explorer"}</small>
+                    </div>
+                </div>
             </section>
 
-            {user && <PlayerProgress userId={user.id} />}
+            {user && <PlayerProgress userId={user.id} onGlobalRate={setGlobalRate} />}
 
             <section className="home-section" aria-labelledby="world-heading">
                 <div className="home-section-heading">
@@ -104,9 +133,15 @@ export default function Home() {
                 <div className="home-grid">{swissModes.map(mode => <ModeCard key={mode.route} {...mode} />)}</div>
             </section>
 
+            <section className="home-section" aria-labelledby="usa-heading">
+                <div className="home-section-heading">
+                    <div><p className="section-kicker">04 · États-Unis</p><h2 id="usa-heading">Les États-Unis <span className="heading-us-flag" role="img" aria-label="Drapeau américain"><USAFlagIcon /></span></h2></div>
+                </div>
+                <div className="home-grid">{usModes.map(mode => <ModeCard key={mode.route} {...mode} />)}</div>
+            </section>
             <section id="mes-quiz" className="home-section home-custom-quizzes" aria-labelledby="custom-quizzes-heading">
                 <div className="home-section-heading">
-                    <div><p className="section-kicker">04 · À toi de jouer</p><h2 id="custom-quizzes-heading">Mes quiz personnalisés</h2></div>
+                    <div><p className="section-kicker">05 · À toi de jouer</p><h2 id="custom-quizzes-heading">Mes quiz personnalisés</h2></div>
                     {user && <button className="create-quiz-btn" onClick={() => navigate("/create-quiz")}>＋ Créer un quiz</button>}
                 </div>
                 {user ? <MyQuizzes embedded /> : !loading ? (
