@@ -5,12 +5,13 @@ import { useNavigate } from "react-router-dom";
 import type { Quiz } from "../api/types.ts";
 import { getCustomQuestionMode } from "../utils/customQuizModes";
 
-type QuizCategory = "monde" | "france" | "suisse" | "mixte";
+type QuizCategory = "monde" | "france" | "suisse" | "usa" | "mixte";
 
 const QUIZ_CATEGORIES: { key: QuizCategory; label: string; icon: ReactNode }[] = [
     { key: "monde", label: "Monde", icon: String.fromCodePoint(0x1f30d) },
     { key: "france", label: "France", icon: <svg className="custom-quiz-category-flag" viewBox="0 0 30 20"><rect width="10" height="20" fill="#0055a4"/><rect x="10" width="10" height="20" fill="#fff"/><rect x="20" width="10" height="20" fill="#ef4135"/></svg> },
     { key: "suisse", label: "Suisse", icon: <svg className="custom-quiz-category-flag custom-quiz-category-flag-swiss" viewBox="0 0 24 24"><rect width="24" height="24" rx="3" fill="#d52b1e"/><path d="M9 4h6v5h5v6h-5v5H9v-5H4V9h5z" fill="#fff"/></svg> },
+    { key: "usa", label: "États-Unis", icon: <svg className="custom-quiz-category-flag" viewBox="0 0 38 26"><rect width="38" height="26" rx="3" fill="#fff"/>{[0, 4, 8, 12, 16, 20, 24].map(y => <rect key={y} y={y} width="38" height="2" fill="#c43b4a"/>)}<rect width="17" height="14" rx="1" fill="#244477"/>{[[3, 3], [8, 3], [13, 3], [5.5, 6.5], [10.5, 6.5], [3, 10], [8, 10], [13, 10]].map(([x, y], index) => <circle key={index} cx={x} cy={y} r=".8" fill="#fff"/>)}</svg> },
     { key: "mixte", label: "Quiz mixtes", icon: String.fromCodePoint(0x1f5fa, 0xfe0f) },
 ];
 
@@ -34,6 +35,7 @@ function quizCategory(quiz: Quiz): QuizCategory {
         if (group === "pays") categories.add("monde");
         else if (group === "france") categories.add("france");
         else if (group === "suisse") categories.add("suisse");
+        else if (group === "usa") categories.add("usa");
     }
     if (categories.size > 1) return "mixte";
     return categories.values().next().value ?? "monde";
