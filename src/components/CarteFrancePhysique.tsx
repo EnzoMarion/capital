@@ -113,7 +113,7 @@ export function CarteFrancePhysique({ type, highlight }: { type: MapType; highli
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const features = type === "mountains" ? FRENCH_MOUNTAIN_RANGES : FRENCH_RIVERS;
-    const featureLabel = type === "mountains" ? "massifs et chaînes de montagnes" : "fleuves";
+    const featureLabel = type === "mountains" ? "massifs et chaînes de montagnes" : "cinq grands fleuves";
 
     useEffect(() => {
         let active = true;
@@ -158,7 +158,7 @@ export function CarteFrancePhysique({ type, highlight }: { type: MapType; highli
             </svg>
             <div className="france-physical-map-legend" aria-hidden="true">
                 <span><i className="physical-legend-mountain" /> Massifs</span>
-                <span><i className="physical-legend-river" /> Fleuves</span>
+                <span><i className="physical-legend-river" /> Grands fleuves (5)</span>
             </div>
             <small className="map-credit">Contours départementaux : GeoJSON de Grégoire David · emprises géographiques indicatives</small>
         </>}

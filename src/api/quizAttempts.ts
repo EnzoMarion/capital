@@ -22,7 +22,7 @@ export const QUIZ_STAT_LABELS: Record<string, string> = {
     france_identification: "Identification des départements",
     france_regions: "Régions françaises",
     france_mountains: "Chaînes de montagnes françaises",
-    france_rivers: "Fleuves français",
+    france_rivers: "Grands fleuves français",
     switzerland_cantons: "Cantons suisses",
     switzerland_chief_towns: "Chefs-lieux suisses",
     switzerland_canton_flags: "Drapeaux des cantons suisses",

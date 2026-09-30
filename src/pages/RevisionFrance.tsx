@@ -78,7 +78,7 @@ export default function RevisionFrance() {
         <main className="revision-wrapper france-revision">
             <p className="section-kicker">Entraînement libre</p>
             <h1 className="revision-title">Fiches de révision · France</h1>
-            <p className="france-revision-intro">Révise les départements, les reliefs et les fleuves français. Recherche par nom, ville ou code.</p>
+            <p className="france-revision-intro">Révise les départements, les reliefs et les cinq grands fleuves français. Recherche par nom, ville ou code.</p>
             <label className="sr-only" htmlFor="france-revision-search">Rechercher une fiche</label>
             <input id="france-revision-search" className="revision-search" placeholder="Ex. Gironde, Bordeaux, Loire, Alpes…" value={search} onChange={event => setSearch(event.target.value)} />
             <p className="france-revision-count">{filtered.length + filteredMountains.length + filteredRivers.length} fiche{filtered.length + filteredMountains.length + filteredRivers.length > 1 ? "s" : ""}</p>
@@ -119,9 +119,9 @@ export default function RevisionFrance() {
                             aria-pressed={selectedRiverId === item.id} title={`Afficher ${item.name} sur la carte`}
                             onClick={() => setSelectedRiverId(current => current === item.id ? null : item.id)}>
                             <span className="france-revision-code" aria-hidden="true">🌊</span>
-                            <span className="france-revision-card-copy"><strong>{item.name}</strong><span>Fleuve français</span></span>
+                            <span className="france-revision-card-copy"><strong>{item.name}</strong><span>Grand fleuve français · programme scolaire</span></span>
                         </button>)}
-                    </div> : <p className="france-revision-empty">Aucun fleuve ne correspond à cette recherche.</p>}
+                    </div> : <p className="france-revision-empty">Aucun cours d’eau ne correspond à cette recherche.</p>}
                 </div>
             </details>
         </main>

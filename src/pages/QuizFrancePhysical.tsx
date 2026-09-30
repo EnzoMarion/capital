@@ -45,15 +45,15 @@ export default function QuizFrancePhysical() {
     }, [feature, features, mode]);
 
     const isMountains = featureType === "mountains";
-    const quizTitle = isMountains ? "Chaînes de montagnes françaises" : "Fleuves français";
+    const quizTitle = isMountains ? "Chaînes de montagnes françaises" : "Les cinq grands fleuves français";
     const attemptSave = useQuizAttemptSave({
         enabled: finished && answers.length > 0,
         userId: user?.id,
         quizKey: isMountains ? "france_mountains" : "france_rivers",
         score: answers.filter(item => item.isCorrect).length,
         totalQuestions: answers.length,
-        scopeKey: isMountains ? "reliefs-francais" : "fleuves-francais",
-        scopeLabel: isMountains ? "Massifs et chaînes de montagnes" : "Principaux fleuves",
+        scopeKey: isMountains ? "reliefs-francais" : "cinq-grands-fleuves-francais",
+        scopeLabel: isMountains ? "Massifs et chaînes de montagnes" : "Les cinq grands fleuves français",
     });
 
     useEffect(() => {
@@ -66,7 +66,7 @@ export default function QuizFrancePhysical() {
         const isCorrect = normalize(value) === normalize(feature.name);
         setAnswer(value);
         setAnswers(previous => [...previous, {
-            question: isMountains ? "Relief montagneux mis en évidence" : "Fleuve mis en évidence",
+            question: isMountains ? "Relief montagneux mis en évidence" : "Grand fleuve mis en évidence",
             userAnswer: value,
             correctAnswer: feature.name,
             isCorrect,
@@ -114,12 +114,12 @@ export default function QuizFrancePhysical() {
         <div className="france-quiz-layout">
             <div className="france-map-panel france-physical-map-panel"><CarteFrancePhysique type={featureType} highlight={feature.id} /></div>
             <div className="france-answer-panel">
-                {mode === "multiple" ? <div className="mc-choices france-mc-choices" aria-label={isMountains ? "Choisis le massif ou la chaîne" : "Choisis le fleuve"}>
+                {mode === "multiple" ? <div className="mc-choices france-mc-choices" aria-label={isMountains ? "Choisis le massif ou la chaîne" : "Choisis le grand fleuve"}>
                     {options.map(option => <button key={option} type="button"
                         className={`mc-btn${showCorrection && option === feature.name ? " correct" : showCorrection && latestAnswer?.userAnswer === option ? " wrong" : ""}`}
                         disabled={showCorrection} onClick={() => submit(option)}>{option}</button>)}
                 </div> : <form className="quizfr-form" onSubmit={event => { event.preventDefault(); submit(answer); }}>
-                    <label htmlFor="france-physical-answer">{isMountains ? "Quel est le nom de ce relief ?" : "Quel est le nom de ce fleuve ?"}</label>
+                    <label htmlFor="france-physical-answer">{isMountains ? "Quel est le nom de ce relief ?" : "Quel est le nom de ce grand fleuve ?"}</label>
                     <input id="france-physical-answer" ref={inputRef} value={answer} disabled={showCorrection} onChange={event => setAnswer(event.target.value)} autoComplete="off" />
                     {!showCorrection && <button type="submit">Valider</button>}
                 </form>}
