@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { logout } from "../api/auth";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { downloadMyData, deleteMyAccount } from "../api/personalData";
+import { supabase } from "../api/supabase";
 
 export default function AuthStatusIcon() {
     const { user, setUser, loading } = useAuth();
     const [open, setOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [signingOut, setSigningOut] = useState(false);
+    const [exportingData, setExportingData] = useState(false);
+    const [deletingAccount, setDeletingAccount] = useState(false);
+    const [privacyActionMessage, setPrivacyActionMessage] = useState<string | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -40,7 +45,7 @@ export default function AuthStatusIcon() {
             <div className="auth-icon-wrapper">
                 <button
                     aria-label="Profil utilisateur"
-                    onClick={() => { setError(null); setOpen(true); }}
+                    onClick={() => { setError(null); setPrivacyActionMessage(null); setOpen(true); }}
                     className="auth-icon-btn"
                 >
                     <svg width="22" height="22" viewBox="0 0 20 20" fill="#176b55">
@@ -69,6 +74,52 @@ export default function AuthStatusIcon() {
                         </svg>
                         <div id="account-title" className="auth-modal-email">{user.email}</div>
                         {error && <p className="auth-message error" role="alert">{error}</p>}
+                        <div className="account-privacy-actions">
+                            <button
+                                type="button"
+                                className="account-privacy-export"
+                                disabled={exportingData || deletingAccount}
+                                onClick={async () => {
+                                    setPrivacyActionMessage(null);
+                                    setExportingData(true);
+                                    try {
+                                        await downloadMyData(user);
+                                        setPrivacyActionMessage("Ton export de données est téléchargé.");
+                                    } catch {
+                                        setPrivacyActionMessage("L’export n’a pas abouti. Réessaie ou contacte l’assistance.");
+                                    } finally {
+                                        setExportingData(false);
+                                    }
+                                }}
+                            >
+                                {exportingData ? "Préparation de l’export…" : "Télécharger mes données"}
+                            </button>
+                            <button
+                                type="button"
+                                className="account-privacy-delete"
+                                disabled={exportingData || deletingAccount}
+                                onClick={async () => {
+                                    if (!window.confirm("Supprimer définitivement ton compte Atlas, tes quiz, tes scores et tes données de progression ? Cette action est irréversible.")) return;
+                                    setPrivacyActionMessage(null);
+                                    setDeletingAccount(true);
+                                    try {
+                                        await deleteMyAccount();
+                                        await supabase.auth.signOut({ scope: "local" });
+                                        setOpen(false);
+                                        setUser(null);
+                                        navigate("/login?account-deleted=1", { replace: true });
+                                    } catch {
+                                        setPrivacyActionMessage("La suppression n’a pas abouti. Vérifie que la fonction Supabase de suppression du compte est déployée, puis réessaie.");
+                                    } finally {
+                                        setDeletingAccount(false);
+                                    }
+                                }}
+                            >
+                                {deletingAccount ? "Suppression du compte…" : "Supprimer mon compte"}
+                            </button>
+                            {privacyActionMessage && <p className="auth-message" role="status">{privacyActionMessage}</p>}
+                            <Link className="account-privacy-link" to="/confidentialite" onClick={() => setOpen(false)}>Lire la politique de confidentialité</Link>
+                        </div>
                         <button
                             className="auth-modal-logout"
                             disabled={signingOut}

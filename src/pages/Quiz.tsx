@@ -525,6 +525,7 @@ export default function Quiz() {
                 src={`https://flagcdn.com/${alpha2.toLowerCase()}.svg`}
                 alt="drapeau"
                 className="flag-img"
+                referrerPolicy="no-referrer"
                 onError={e => { (e.currentTarget as HTMLImageElement).replaceWith(document.createTextNode("❓")); }}
             />
         );

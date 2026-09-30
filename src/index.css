@@ -1196,6 +1196,36 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .home-hero-copy > p:not(.hero-kicker) { max-width: calc(100% - 72px); padding-bottom: 70px; }
 }
 @media (prefers-reduced-motion: reduce) { .hero-atlas-orbit { animation: none; } }
+
+/* Privacy notice and account data controls */
+.site-privacy-footer { width: min(1120px, calc(100% - 40px)); margin: 0 auto 28px; padding: 14px 0; border-top: 1px solid rgba(172,155,255,.14); text-align: center; }
+.site-privacy-footer a, .account-privacy-link { color: #bdb1f2; font-size: .82rem; text-decoration: underline; text-underline-offset: 3px; }
+.privacy-page { width: min(900px, calc(100% - 32px)); margin: 28px auto 60px; }
+.privacy-page-header { margin-bottom: 22px; }
+.privacy-page-header h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -.045em; }
+.privacy-page-header > p:last-child { color: #aaa4c4; }
+.privacy-page section { margin: 12px 0; padding: clamp(16px, 3vw, 25px); border: 1px solid rgba(172,155,255,.14); border-radius: 16px; background: rgba(19,17,42,.62); }
+.privacy-page section h2 { margin: 0 0 9px; font-size: 1.05rem; color: #e8e2ff; }
+.privacy-page section p, .privacy-page section li { color: #c5bfdc; font-size: .9rem; }
+.privacy-page section p:last-child { margin-bottom: 0; }
+.privacy-page section ul { padding-left: 21px; }
+.privacy-page section li + li { margin-top: 7px; }
+.privacy-setup-note { margin: 18px 0; padding: 16px 18px; border: 1px solid rgba(247,201,72,.32); border-radius: 14px; background: rgba(247,201,72,.07); color: #f4df9c; }
+.privacy-setup-note p { margin: 5px 0 0; color: #d4cba9; font-size: .86rem; }
+.privacy-back-link { text-align: center; }
+.privacy-back-link a { color: #c8bbff; }
+.auth-modal-content { max-height: calc(100svh - 32px); overflow-y: auto; }
+.account-privacy-actions { width: 100%; display: grid; gap: 9px; margin: 0 0 12px; }
+.account-privacy-actions button { width: 100%; padding: 10px 12px; border: 1px solid rgba(172,155,255,.22); border-radius: 10px; background: rgba(139,117,237,.12); color: #e8e2ff; font-weight: 650; cursor: pointer; }
+.account-privacy-actions button:hover:not(:disabled) { background: rgba(139,117,237,.22); }
+.account-privacy-actions button:disabled { cursor: wait; opacity: .6; }
+.account-privacy-actions .account-privacy-delete { border-color: rgba(255,130,148,.24); background: rgba(197,63,85,.12); color: #ffb9c3; }
+.account-privacy-actions .account-privacy-delete:hover:not(:disabled) { background: rgba(197,63,85,.22); }
+.account-privacy-actions .auth-message { margin: 0; font-size: .8rem; text-align: center; }
+.account-privacy-link { justify-self: center; margin: 2px 0 5px; }
+.login-privacy-note { margin: 12px 0; color: #aaa4c4; font-size: .78rem; }
+.login-privacy-note a { color: #c8bbff; text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 600px) { .site-privacy-footer { width: calc(100% - 28px); } }
 .player-progress-accordion > summary,
 .custom-quiz-category > summary { list-style: none; }
 .player-progress-accordion > summary::-webkit-details-marker,

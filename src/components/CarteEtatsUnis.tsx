@@ -17,7 +17,7 @@ let pathsCache: StatePath[] | null = null;
 
 function loadTopology() {
     if (!mapPromise) {
-        mapPromise = fetch(geoUrl).then(response => {
+        mapPromise = fetch(geoUrl, { referrerPolicy: "no-referrer" }).then(response => {
             if (!response.ok) throw new Error("US map unavailable");
             return response.json() as Promise<Topology>;
         }).catch(error => {

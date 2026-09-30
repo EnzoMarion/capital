@@ -65,7 +65,7 @@ function TerritoryFlagImage({ territory, loading = "eager" }: { territory: FlagT
     const source = sources[sourceIndex];
     if (!source) return <div className="territory-flag-unavailable" role="img" aria-label="Drapeau indisponible">Drapeau indisponible</div>;
 
-    return <img className="territory-flag-img" src={source} alt="Drapeau à identifier" loading={loading}
+    return <img className="territory-flag-img" src={source} alt="Drapeau à identifier" loading={loading} referrerPolicy="no-referrer"
         decoding="async" onError={() => setSourceIndex(index => index + 1)} />;
 }
 

@@ -106,6 +106,7 @@ export default function RevisionList() {
                                                         src={`https://flagcdn.com/${alpha2.toLowerCase()}.svg`}
                                                         alt={country.name}
                                                         className="revision-flag-img"
+                                                        referrerPolicy="no-referrer"
                                                     />
                                                 ) : (
                                                     <span className="flag-fallback">❓</span>

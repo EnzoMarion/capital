@@ -19,6 +19,7 @@ import QuizFranceRegions from "./pages/QuizFranceRegions";
 import FranceQuizType from "./pages/FranceQuizType";
 import QuizSwissCantons from "./pages/QuizSwissCantons";
 import { useAuth } from "./context/AuthContext";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const QuizFrancePhysical = lazy(() => import("./pages/QuizFrancePhysical"));
 const RevisionFrance = lazy(() => import("./pages/RevisionFrance"));
@@ -49,6 +50,7 @@ function AppHeader() {
                     <img
                         className="brand-avatar"
                         src={user?.avatarUrl || "/atlas-icon.svg"}
+                        referrerPolicy="no-referrer"
                         alt=""
                         onError={event => {
                             if (event.currentTarget.dataset.fallback) return;
@@ -119,6 +121,7 @@ function App() {
                 <Route path="/modes" element={<SelectMode />} />
                 <Route path="/quiz" element={<QuizRoute />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/confidentialite" element={<PrivacyPolicy />} />
                 <Route path="/quiz-eu-type" element={<QuizEuType />} />
                 <Route path="/quiz-flags-type" element={<QuizFlagsType />} />
                 <Route path="/create-quiz" element={<AuthRequired><CreateQuiz /></AuthRequired>} />
@@ -137,6 +140,7 @@ function App() {
                 <Route path="/404" element={<NotFound />} />
                 <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
+            <footer className="site-privacy-footer"><Link to="/confidentialite">Confidentialité et données personnelles</Link></footer>
         </AuthProvider>
     );
 }

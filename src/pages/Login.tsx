@@ -80,12 +80,14 @@ export default function Login() {
     }
 
     const resetSent = searchParams.get("password-reset") === "sent";
+    const accountDeleted = searchParams.get("account-deleted") === "1";
 
     return (
         <main className="login-card">
             <p className="section-kicker">Ton espace</p>
             <h1 className="login-heading">{mode === "reset" ? "Réinitialiser le mot de passe" : mode === "update" ? "Choisis un nouveau mot de passe" : "Ravi de te revoir"}</h1>
             <p className="login-intro">{mode === "reset" ? "Entre ton adresse et nous t’enverrons un lien de réinitialisation." : mode === "update" ? "Choisis un mot de passe d’au moins 6 caractères." : "Connecte-toi pour retrouver tes quiz personnalisés."}</p>
+            {(mode === "register" || mode === "login") && <p className="login-privacy-note">La connexion utilise ton adresse e-mail et conserve une session sur cet appareil. <Link to="/confidentialite">Lire la politique de confidentialité</Link>.</p>}
 
             {(mode === "login" || mode === "register") && (
                 <div className="auth-tabs" role="tablist" aria-label="Connexion ou création de compte">
@@ -115,7 +117,7 @@ export default function Login() {
 
             {mode === "login" && <button className="text-action" type="button" onClick={() => { setMode("reset"); setMessage(null); }}>Mot de passe oublié ?</button>}
             {mode === "reset" && <button className="text-action" type="button" onClick={() => { setMode("login"); setMessage(null); }}>← Retour à la connexion</button>}
-            {(message || resetSent) && <p className={`auth-message${error ? " error" : ""}`} role={error ? "alert" : "status"}>{message || "Si tu avais demandé un nouveau mot de passe, consulte ta boîte e-mail."}</p>}
+            {(message || resetSent || accountDeleted) && <p className={`auth-message${error ? " error" : ""}`} role={error ? "alert" : "status"}>{message || (accountDeleted ? "Ton compte Atlas et les données associées ont été supprimés." : "Si tu avais demandé un nouveau mot de passe, consulte ta boîte e-mail.")}</p>}
             <div className="login-footer"><Link to="/">Retour à l’accueil</Link></div>
         </main>
     );
