@@ -23,10 +23,7 @@ async function exportOwnedRows(table: ExportTable, orderBy: string, userId: stri
             .order(orderBy, { ascending: true })
             .range(from, from + pageSize - 1);
 
-        if (error) {
-            if (error.code === "PGRST205" || error.code === "42P01") return rows;
-            throw error;
-        }
+        if (error) throw error;
 
         const page = (data ?? []) as Record<string, unknown>[];
         rows.push(...page);
@@ -36,9 +33,10 @@ async function exportOwnedRows(table: ExportTable, orderBy: string, userId: stri
     }
 }
 
-export async function downloadMyData(user: { id: string; email: string; avatarUrl?: string | null }) {
+export async function downloadMyData() {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError ?? new Error("Session absente.");
+    const user = authData.user;
 
     const datasets: Partial<Record<ExportTable, Record<string, unknown>[]>> = {};
     for (const table of EXPORT_TABLES) {

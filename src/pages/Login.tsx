@@ -86,7 +86,7 @@ export default function Login() {
         <main className="login-card">
             <p className="section-kicker">Ton espace</p>
             <h1 className="login-heading">{mode === "reset" ? "Réinitialiser le mot de passe" : mode === "update" ? "Choisis un nouveau mot de passe" : "Ravi de te revoir"}</h1>
-            <p className="login-intro">{mode === "reset" ? "Entre ton adresse et nous t’enverrons un lien de réinitialisation." : mode === "update" ? "Choisis un mot de passe d’au moins 6 caractères." : "Connecte-toi pour retrouver tes quiz personnalisés."}</p>
+            <p className="login-intro">{mode === "reset" ? "Entre ton adresse et nous t’enverrons un lien de réinitialisation." : mode === "update" ? "Choisis un mot de passe d’au moins 6 caractères." : "Le compte sert à enregistrer ta progression et tes quiz personnalisés. Les quiz publics se jouent sans compte."}</p>
             {(mode === "register" || mode === "login") && <p className="login-privacy-note">La connexion utilise ton adresse e-mail et conserve une session sur cet appareil. <Link to="/confidentialite">Lire la politique de confidentialité</Link>.</p>}
 
             {(mode === "login" || mode === "register") && (

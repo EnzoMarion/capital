@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { logout } from "../api/auth";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { downloadMyData, deleteMyAccount } from "../api/personalData";
 import { supabase } from "../api/supabase";
 
@@ -55,7 +56,7 @@ export default function AuthStatusIcon() {
                 </button>
             </div>
 
-            {open && (
+            {open && createPortal(
                 <div
                     className="auth-modal-overlay"
                     onClick={() => setOpen(false)}
@@ -83,7 +84,7 @@ export default function AuthStatusIcon() {
                                     setPrivacyActionMessage(null);
                                     setExportingData(true);
                                     try {
-                                        await downloadMyData(user);
+                                        await downloadMyData();
                                         setPrivacyActionMessage("Ton export de données est téléchargé.");
                                     } catch {
                                         setPrivacyActionMessage("L’export n’a pas abouti. Réessaie ou contacte l’assistance.");
@@ -148,7 +149,8 @@ export default function AuthStatusIcon() {
                             Fermer
                         </button>
                     </div>
-                </div>
+                </div>,
+                document.body,
             )}
         </>
     );

@@ -42,7 +42,7 @@ Deno.serve(async request => {
 
     for (const table of tables) {
         const { error } = await admin.from(table).delete().eq("user_id", userId);
-        if (error && error.code !== "PGRST205" && error.code !== "42P01") {
+        if (error && error.code !== "42P01") {
             console.error(`Account deletion failed while removing ${table}:`, error.code);
             return json({ error: "Les données du compte n’ont pas toutes pu être supprimées. Réessaie ou contacte l’assistance." }, 500);
         }

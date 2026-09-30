@@ -16,6 +16,9 @@ dist-ssr
 !.env.example
 !.env.*.example
 
+# Local Supabase CLI project-link metadata
+/supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
