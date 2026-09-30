@@ -133,7 +133,7 @@ export function CarteFranceDept({ highlight, answerHighlight, hideHighlightName 
                 </svg>
                 <div className="france-overseas-insets" aria-hidden={!onSelect}>
                     <small className="france-overseas-heading">Outre-mer · zones agrandies</small>
-                    {OVERSEAS_DEPARTMENTS.map((region, index) => {
+                    {OVERSEAS_DEPARTMENTS.map(region => {
                         const selected = highlightedCodes.has(region.code);
                         const isAnswer = answerCodes.has(region.code);
                         const picked = pickedCode === region.code;
