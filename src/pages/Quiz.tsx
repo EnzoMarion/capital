@@ -417,9 +417,10 @@ export default function Quiz() {
                 return;
             }
             if (country) {
-                const isCorrect = selectedCode === country.code.trim().padStart(3, "0");
+                const mapCountry = country;
+                const isCorrect = selectedCode === mapCountry.code.trim().padStart(3, "0");
                 const picked = allCountries.find(item => item.code.trim().padStart(3, "0") === selectedCode);
-                setAnswers(previous => [...previous, { country, user: picked?.name ?? selectedMapCode, isCorrect, questionType, mapAnswerLabel: country.name }]);
+                setAnswers(previous => [...previous, { country: mapCountry, user: picked?.name ?? selectedMapCode, isCorrect, questionType, mapAnswerLabel: mapCountry.name }]);
                 setLastAnswerCorrect(isCorrect);
                 if (isCorrect) setScore(previous => previous + 1);
                 setShowCorrection(true);
@@ -427,9 +428,10 @@ export default function Quiz() {
             }
         }
         if (!country) return;
-        const isCorrect = selectedCode === country.code.trim().padStart(3, "0");
+        const currentCountry = country;
+        const isCorrect = selectedCode === currentCountry.code.trim().padStart(3, "0");
         const picked = countries.find(item => item.code.trim().padStart(3, "0") === selectedCode);
-        setAnswers(previous => [...previous, { country, user: picked?.name ?? selectedMapCode, isCorrect, questionType: euMode ? "annee_eu" : flagsMode ? "drapeau" : "capitale", mapAnswerLabel: country.name }]);
+        setAnswers(previous => [...previous, { country: currentCountry, user: picked?.name ?? selectedMapCode, isCorrect, questionType: euMode ? "annee_eu" : flagsMode ? "drapeau" : "capitale", mapAnswerLabel: currentCountry.name }]);
         setLastAnswerCorrect(isCorrect);
         if (isCorrect) setScore(previous => previous + 1);
         setShowCorrection(true);
