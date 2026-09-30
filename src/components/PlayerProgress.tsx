@@ -17,7 +17,7 @@ const CONTINENTS = [
     { code: "Oceania", label: "Océanie" },
 ];
 const NATIVE_FRANCE_QUIZ_KEYS = ["france_departements", "france_identification", "france_regions"];
-const NATIVE_SWISS_QUIZ_KEYS = ["switzerland_cantons", "personnalise_suisse"];
+const NATIVE_SWISS_QUIZ_KEYS = ["switzerland_cantons", "switzerland_chief_towns"];
 
 function nextTarget(bestPercent: number) {
     if (bestPercent >= 100) return 100;

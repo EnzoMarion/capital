@@ -23,8 +23,9 @@ export default function QuizTypeSelect() {
             navigate(`${route}?type=${selectedType}${gameParam}`);
             return;
         }
-        if (switzerlandMode === "cantons") {
-            navigate(`/quiz-swiss-cantons?type=${selectedType}`);
+        if (switzerlandMode === "cantons" || switzerlandMode === "chief-towns") {
+            const gameParam = switzerlandMode === "chief-towns" ? "&game=chief-towns" : "";
+            navigate(`/quiz-swiss-cantons?type=${selectedType}${gameParam}`);
             return;
         }
         navigate(`/modes?${params.toString()}`);

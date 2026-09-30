@@ -19,6 +19,7 @@ const franceModes = [
 
 const swissModes = [
     { icon: "switzerland", title: "Cantons suisses", text: "Retrouve les 26 cantons en QCM, saisie libre ou carte muette.", route: "/quiz-type?switzerland=cantons" },
+    { icon: "📍", title: "Chefs-lieux suisses", text: "Retrouve la ville principale à partir du canton affiché.", route: "/quiz-type?switzerland=chief-towns" },
 ];
 
 function FlagIcon({ country }: { country: "france" | "eu" }) {

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useQuizAttemptSave } from "../api/quizAttempts";
 import { CarteSuisseCantons } from "../components/CarteSuisseCantons";
-import { SWISS_CANTONS, cantonAnswerIsCorrect } from "../utils/swissCantons";
+import { SWISS_CANTONS, cantonAnswerIsCorrect, chiefTownAnswerIsCorrect } from "../utils/swissCantons";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
 
 type AnswerMode = "input" | "multiple" | "map";
@@ -20,7 +20,8 @@ function shuffle<T>(items: T[]): T[] {
 export default function QuizSwissCantons() {
     const [searchParams] = useSearchParams();
     const requestedMode = searchParams.get("type");
-    const mode: AnswerMode = requestedMode === "input" || requestedMode === "map" ? requestedMode : "multiple";
+    const chiefTownMode = searchParams.get("game") === "chief-towns";
+    const mode: AnswerMode = requestedMode === "input" ? "input" : requestedMode === "map" && !chiefTownMode ? "map" : "multiple";
     const [order, setOrder] = useState<number[]>(() => shuffle(SWISS_CANTONS.map((_, index) => index)));
     const [current, setCurrent] = useState(0);
     const [answer, setAnswer] = useState("");
@@ -39,14 +40,15 @@ export default function QuizSwissCantons() {
         const others = shuffle(SWISS_CANTONS.filter(item => item.code !== canton.code)).slice(0, 3);
         return shuffle([canton, ...others]);
     }, [canton]);
+    const displayedAnswer = (item: typeof SWISS_CANTONS[number]) => chiefTownMode ? item.chiefTown : item.name;
     const attemptSave = useQuizAttemptSave({
         enabled: finished && answers.length > 0,
         userId: user?.id,
-        quizKey: "switzerland_cantons",
+        quizKey: chiefTownMode ? "switzerland_chief_towns" : "switzerland_cantons",
         score: answers.filter(item => item.isCorrect).length,
         totalQuestions: answers.length,
-        scopeKey: "26-cantons",
-        scopeLabel: "Les 26 cantons",
+        scopeKey: chiefTownMode ? "26-chefs-lieux" : "26-cantons",
+        scopeLabel: chiefTownMode ? "Chefs-lieux des 26 cantons" : "Les 26 cantons",
     });
 
     useEffect(() => {
@@ -57,11 +59,12 @@ export default function QuizSwissCantons() {
     function submit(value: string) {
         if (!canton || showCorrection) return;
         setAnswer(value);
+        const correctAnswer = displayedAnswer(canton);
         setAnswers(previous => [...previous, {
-            question: `Canton ${canton.code}`,
+            question: chiefTownMode ? `Chef-lieu du canton ${canton.name}` : `Canton ${canton.code}`,
             userAnswer: value,
-            correctAnswer: canton.name,
-            isCorrect: cantonAnswerIsCorrect(value, canton),
+            correctAnswer,
+            isCorrect: chiefTownMode ? chiefTownAnswerIsCorrect(value, canton) : cantonAnswerIsCorrect(value, canton),
         }]);
         setShowCorrection(true);
     }
@@ -117,7 +120,7 @@ export default function QuizSwissCantons() {
     }
 
     if (!canton && !finished) return <p className="empty-state">Aucun canton disponible.</p>;
-    if (finished) return <FranceQuizResult title="Cantons suisses" answers={answers} onRestart={restart}
+    if (finished) return <FranceQuizResult title={chiefTownMode ? "Chefs-lieux suisses" : "Cantons suisses"} answers={answers} onRestart={restart}
         saveStatus={attemptSave.status} saveError={attemptSave.errorMessage} onRetrySave={attemptSave.retry} />;
 
     if (mode === "map") {
@@ -147,22 +150,23 @@ export default function QuizSwissCantons() {
     }
 
     return <main className="quizfr-wrapper france-game-card swiss-game-card" onKeyDown={handleEnter}>
-        <p className="section-kicker">Suisse · Cantons · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
-        <h1>Quel canton est mis en évidence ?</h1>
+        <p className="section-kicker">Suisse · {chiefTownMode ? "Chefs-lieux" : "Cantons"} · {mode === "multiple" ? "QCM" : "Saisie libre"}</p>
+        <h1>{chiefTownMode ? "Quel est le chef-lieu de ce canton ?" : "Quel canton est mis en évidence ?"}</h1>
         <div className="france-quiz-layout swiss-quiz-layout">
             <div className="france-map-panel"><CarteSuisseCantons highlight={canton.code} /></div>
             <div className="france-answer-panel">
-                {mode === "multiple" ? <div className="mc-choices france-mc-choices" aria-label="Choisis le canton">
+                {chiefTownMode && <p className="quizfr-question"><strong>{canton.name}</strong></p>}
+                {mode === "multiple" ? <div className="mc-choices france-mc-choices" aria-label={chiefTownMode ? "Choisis le chef-lieu" : "Choisis le canton"}>
                     {options.map(option => <button key={option.code} type="button"
-                        className={`mc-btn${showCorrection && option.code === canton.code ? " correct" : showCorrection && latestAnswer?.userAnswer === option.name ? " wrong" : ""}`}
-                        disabled={showCorrection} onClick={() => submit(option.name)}>{option.name}</button>)}
+                        className={`mc-btn${showCorrection && option.code === canton.code ? " correct" : showCorrection && latestAnswer?.userAnswer === displayedAnswer(option) ? " wrong" : ""}`}
+                        disabled={showCorrection} onClick={() => submit(displayedAnswer(option))}>{displayedAnswer(option)}</button>)}
                 </div> : <form className="quizfr-form" onSubmit={event => { event.preventDefault(); submit(answer); }}>
-                    <label htmlFor="swiss-canton-answer">Quel est le nom de ce canton ?</label>
+                    <label htmlFor="swiss-canton-answer">{chiefTownMode ? `Ville principale du canton ${canton.name}` : "Quel est le nom de ce canton ?"}</label>
                     <input id="swiss-canton-answer" ref={inputRef} value={answer} onChange={event => setAnswer(event.target.value)} disabled={showCorrection} autoComplete="off" />
                     {!showCorrection && <button type="submit">Valider</button>}
                 </form>}
                 {showCorrection && <p className={`quiz-correction ${latestAnswer?.isCorrect ? "correct" : "wrong"}`} role="status">
-                    {latestAnswer?.isCorrect ? "Bonne réponse !" : <>La bonne réponse était <strong>{canton.name}</strong>.</>}
+                    {latestAnswer?.isCorrect ? "Bonne réponse !" : <>La bonne réponse était <strong>{displayedAnswer(canton)}</strong>.</>}
                 </p>}
                 {showCorrection && <button ref={nextButtonRef} type="button" className="primary-btn france-next" onClick={next}>{current === order.length - 1 ? "Voir le résultat" : "Suivant"}</button>}
                 <div className="quizfr-progress">Question {current + 1} sur {order.length} · {answers.filter(item => item.isCorrect).length} bonnes réponses</div>

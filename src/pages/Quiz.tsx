@@ -12,7 +12,7 @@ import { supabase } from "../api/supabase";
 import { useAuth } from "../context/AuthContext";
 import { getCustomAnswerValue, getCustomQuestionMode, type CustomQuestionType } from "../utils/customQuizModes";
 import { isOverseasDepartment, normalizeDepartmentCode } from "../utils/franceGeography";
-import { SWISS_CANTONS, cantonAnswerIsCorrect, type SwissCanton } from "../utils/swissCantons";
+import { SWISS_CANTONS, cantonAnswerIsCorrect, chiefTownAnswerIsCorrect, type SwissCanton } from "../utils/swissCantons";
 import { recordCountryProgress, useQuizAttemptSave } from "../api/quizAttempts";
 import QuizAttemptStatus from "../components/QuizAttemptStatus";
 
@@ -330,7 +330,7 @@ export default function Quiz() {
         if (mode.group === "suisse") {
             const canton = SWISS_CANTONS.find(item => item.code === question.canton_code);
             if (!canton) return;
-            const choices = SWISS_CANTONS.map(item => item.name);
+            const choices = SWISS_CANTONS.map(item => question.question_type === "sw_chief_town" ? item.chiefTown : item.name);
             setMCOptions(getMCOptions(customAnswerValue(question.question_type, canton), choices));
             return;
         }
@@ -370,7 +370,9 @@ export default function Quiz() {
         if (mode.group === "suisse") {
             const canton = SWISS_CANTONS.find(item => item.code === question.canton_code);
             if (!canton) return;
-            const correct = cantonAnswerIsCorrect(value, canton);
+            const correct = question.question_type === "sw_chief_town"
+                ? chiefTownAnswerIsCorrect(value, canton)
+                : cantonAnswerIsCorrect(value, canton);
             setAnswers(previous => [...previous, { swissCanton: canton, user: value, isCorrect: correct, questionType: question.question_type }]);
             setLastAnswerCorrect(correct);
             if (correct) setScore(previous => previous + 1);
@@ -639,7 +641,7 @@ export default function Quiz() {
                         {isMapMode
                             ? department?.nom ?? country?.name
                             : customQuestions
-                            ? customQuestionMode?.showSubject ? department?.nom ?? country?.name : null
+                            ? customQuestionMode?.showSubject ? department?.nom ?? swissCanton?.name ?? country?.name : null
                             : flagsMode ? null : country?.name}
                     </div>
                     <div className="quiz-form">

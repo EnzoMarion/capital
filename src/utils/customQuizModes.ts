@@ -6,6 +6,7 @@ export const CUSTOM_QUESTION_MODES = [
     { key: "fr_prefecture", label: "Préfecture", group: "france", answerField: "cheflieu", answerFormat: "text", prompt: "Retrouve la préfecture de ce département :", placeholder: "Écris le nom de la préfecture", inputType: "text", inputMin: undefined, showSubject: true },
     { key: "fr_region", label: "Région", group: "france", answerField: "region", answerFormat: "text", prompt: "À quelle région appartient ce département ?", placeholder: "Écris le nom de la région", inputType: "text", inputMin: undefined, showSubject: true },
     { key: "sw_canton", label: "Canton suisse", group: "suisse", answerField: "name", answerFormat: "text", prompt: "Quel canton est mis en évidence ?", placeholder: "Écris le nom du canton", inputType: "text", inputMin: undefined, showSubject: false },
+    { key: "sw_chief_town", label: "Chef-lieu", group: "suisse", answerField: "chiefTown", answerFormat: "text", prompt: "Quelle est la ville principale de ce canton ?", placeholder: "Écris le nom du chef-lieu", inputType: "text", inputMin: undefined, showSubject: true },
 ] as const;
 
 export type CustomQuestionType = typeof CUSTOM_QUESTION_MODES[number]["key"];
