@@ -10,7 +10,6 @@ export default function CreateQuiz() {
     const navigate = useNavigate();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [inputType, setInputType] = useState<"multiple" | "input">("multiple");
     const [selectedQuestions, setSelectedQuestions] = useState<CustomQuestion[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -28,7 +27,7 @@ export default function CreateQuiz() {
                 user_id: user.id,
                 title: title.trim(),
                 description: description.trim(),
-                settings: { questions: selectedQuestions, mode: "custom_sequence", inputType },
+                settings: { questions: selectedQuestions, mode: "custom_sequence" },
             }]);
             if (insertError) setError("Le quiz n’a pas pu être créé. Réessaie.");
             else navigate("/#mes-quiz");
@@ -44,7 +43,6 @@ export default function CreateQuiz() {
             <CustomQuizBuilder
                 title={title} setTitle={setTitle}
                 description={description} setDescription={setDescription}
-                inputType={inputType} setInputType={setInputType}
                 selectedQuestions={selectedQuestions} setSelectedQuestions={setSelectedQuestions}
             />
             {error && <p className="quiz-create-error" role="alert">{error}</p>}

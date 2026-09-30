@@ -61,11 +61,8 @@ export default function MyQuizzes({ embedded = false }: { embedded?: boolean }) 
                             <strong className="quizzes-li-title">{q.title}</strong>
                             <div className="quizzes-li-desc">{q.description}</div>
                             <div className="quizzes-li-actions">
-                                <button className="quizzes-li-btn" onClick={() => navigate(`/quiz?quiz_id=${encodeURIComponent(String(q.id))}&type=multiple`)}>
-                                    Jouer en QCM
-                                </button>
-                                <button className="quizzes-li-input-btn" onClick={() => navigate(`/quiz?quiz_id=${encodeURIComponent(String(q.id))}&type=input`)}>
-                                    Jouer en saisie libre
+                                <button className="quizzes-li-btn" onClick={() => navigate(`/quiz-type?quiz_id=${encodeURIComponent(String(q.id))}`)}>
+                                    Jouer
                                 </button>
                                 <button className="quizzes-li-edit" onClick={() => navigate(`/edit-quiz/${q.id}`)}>
                                     Modifier

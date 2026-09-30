@@ -4,7 +4,7 @@ import PlayerProgress from "../components/PlayerProgress";
 import MyQuizzes from "./MyQuizzes";
 
 const worldModes = [
-    { icon: "🧭", title: "Capitales du monde", text: "Retrouve les capitales sur une carte ou à partir du nom du pays.", route: "/quiz-type" },
+    { icon: "🧭", title: "Capitales du monde", text: "Retrouve les capitales à partir du nom du pays.", route: "/quiz-type" },
     { icon: "eu", title: "Union européenne", text: "Mémorise les années d’adhésion des pays membres.", route: "/quiz-type?eu=1" },
     { icon: "🏳️", title: "Drapeaux", text: "Reconnais les pays à partir de leurs drapeaux.", route: "/quiz-type?flags=1" },
     { icon: "📚", title: "Fiches de révision", text: "Parcours les pays, leurs capitales et les années d’adhésion.", route: "/revision" },

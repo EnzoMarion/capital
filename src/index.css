@@ -156,7 +156,7 @@ input[type=checkbox], input[type=radio] { width: 18px; height: 18px; accent-colo
 .config-action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 .config-btn-secondary { background: #f0efff; color: var(--purple-dark); }
 
-input[type=text], input[type=email], input[type=password], input[type=number], select {
+input[type=text], input[type=email], input[type=password], input[type=number], input[type=search], select {
   width: 100%; min-height: 46px; padding: 10px 13px; border: 1px solid #d5ddd5; border-radius: 11px; background: white; color: var(--ink);
 }
 input::placeholder { color: #89958e; }
@@ -208,7 +208,7 @@ input:focus, select:focus { border-color: #9290e3; outline: 3px solid rgba(100,1
 .quiz-map-wrapper { overflow: hidden; margin-bottom: 14px; padding: 8px; border: 1px solid #dfdef3; border-radius: 18px; background: #f0efff; }
 .carte-fullscreen-stack, .carte-map { width: 100%; }
 .carte-map { display: block; height: auto; max-height: none; }
-.quiz-main-wrapper:not(.custom-quiz-play-wrapper) .quiz-map-wrapper .world-map { width: min(100%, 720px); max-height: min(27svh, 260px); margin-inline: auto; }
+.quiz-main-wrapper:not(.custom-quiz-play-wrapper):not(.map-guess-world-screen) .quiz-map-wrapper .world-map { width: min(100%, 720px); max-height: min(27svh, 260px); margin-inline: auto; }
 .flag-wrapper { display: flex; justify-content: center; margin: 0 0 15px; }
 .flag-img { width: min(180px, 40vw); height: 112px; object-fit: contain; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: 0 7px 20px rgba(28,49,39,.08); }
 .flag-fallback { display: inline-grid; place-items: center; min-width: 50px; min-height: 40px; font-size: 1.6rem; }
@@ -561,7 +561,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .config-checkbox-label { background: rgba(29,26,56,.78); }
 .config-checkbox-label:hover { border-color: rgba(244,202,98,.35); background: rgba(47,39,82,.72); }
 .config-btn-secondary, .home-extras .my-quizzes-btn { border: 1px solid rgba(172,155,255,.2); background: rgba(139,117,237,.14); color: #d4c9ff; }
-input[type="text"], input[type="email"], input[type="password"], input[type="number"], select {
+input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], select {
   border-color: rgba(172,155,255,.24); background: rgba(9,8,24,.73); color: #f5f1ff;
 }
 input::placeholder { color: #77728f; }
@@ -743,6 +743,69 @@ input[type=checkbox], input[type=radio] { accent-color: var(--gold); }
   .france-map-panel .carte-fr-dept-stack svg { max-height: min(31svh, 220px); }
   .france-answer-panel .quizfr-question { margin-bottom: 6px; }
   .france-mc-choices .mc-btn { min-height: 37px; }
+}
+
+/* Blank map game: large hit areas, visible selection, and a separate confirm action. */
+.answer-mode-grid:has(.answer-mode-card:nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.answer-mode-grid:has(.answer-mode-card:nth-child(3)) .answer-mode-card { width: 100%; aspect-ratio: 1 / 1.08; }
+.france-map-interactive .fr-dept-shape { cursor: pointer; }
+.france-map-interactive .fr-dept-shape:focus-visible { outline: 3px solid #f7c948; outline-offset: 2px; }
+.fr-dept-pick { fill: #f7c948 !important; stroke: #5145ba !important; stroke-width: 2.6 !important; }
+.fr-dept-answer { fill: #52d49a !important; stroke: #16724e !important; stroke-width: 2.8 !important; }
+.france-overseas-inset[role="button"] { cursor: pointer; }
+.france-overseas-inset[role="button"]:focus-visible, .france-overseas-inset.picked { outline: 3px solid #f7c948; outline-offset: 2px; border-color: #f7c948; }
+.quiz-main-wrapper.map-guess-world-screen { width: 100%; min-height: calc(100svh - 76px); padding: 10px clamp(12px, 2vw, 26px) 16px; }
+.map-guess-world-layout { width: 100%; max-width: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(270px, 350px); align-items: center; gap: clamp(12px, 2vw, 24px); }
+.map-guess-world-layout .quiz-map-wrapper { min-width: 0; margin: 0; padding: 8px; display: grid; place-items: center; }
+.map-guess-world-layout .quiz-map-wrapper .carte-map { width: 100%; max-height: 56svh !important; }
+.map-guess-world-layout .quiz-map-wrapper .world-map { max-height: 56svh !important; }
+.map-guess-world-layout .quiz-map-wrapper .europe-map { max-height: 56svh !important; }
+.map-guess-world-layout .quiz-map-wrapper.france-custom-map { width: 100%; height: min(62svh, 620px); margin: 0; display: flex; align-items: center; justify-content: center; }
+.map-guess-world-layout .quiz-map-wrapper.france-custom-map .france-map-svg { height: min(48svh, 520px); max-height: none; }
+.map-guess-answer-card { padding: clamp(18px, 2.5vw, 30px); }
+.map-guess-answer-card .quiz-country { margin-bottom: 0; }
+.map-guess-world-controls, .map-guess-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.map-guess-picked { flex: 1 1 100%; min-height: 28px; color: #d3c9f7; font-weight: 650; text-align: center; }
+.map-guess-clear { min-height: 44px; padding: 9px 15px; border: 1px solid rgba(172,155,255,.25); border-radius: 12px; color: #eee9ff; background: rgba(27,23,53,.9); cursor: pointer; }
+.map-guess-clear:disabled { opacity: .45; cursor: default; }
+.map-guess-controls .primary-btn:disabled { opacity: .45; cursor: default; transform: none; }
+.map-guess-screen { width: 100%; min-height: calc(100svh - 76px); display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0 auto; padding: 10px clamp(10px, 2vw, 24px) 16px; }
+.map-guess-heading { width: min(100%, 1000px); text-align: center; }
+.map-guess-heading .section-kicker { margin: 0 0 2px; }
+.map-guess-heading h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); color: #f5f1ff; }
+.map-guess-heading p:last-child { margin: 3px 0 0; color: #d0c5ff; }
+.map-guess-france-map { width: min(100%, 1500px); flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.map-guess-france-map .carte-fr-dept-stack { width: min(100%, 1250px); max-width: none; padding: 8px; }
+.map-guess-france-map .france-map-svg { height: min(48svh, 520px); max-height: none; }
+.map-guess-france-map .france-overseas-insets { width: min(100%, 780px); margin: 5px auto 0; }
+.map-guess-france-map .france-overseas-inset svg { height: clamp(54px, 9svh, 90px); }
+.map-guess-screen > .quiz-correction { width: min(100%, 700px); margin: 2px auto; }
+.map-guess-progress { color: #c4badf; font-size: .9rem; text-align: center; }
+
+@media (max-width: 900px) {
+  .answer-mode-grid:has(.answer-mode-card:nth-child(3)) { grid-template-columns: 1fr; }
+  .answer-mode-grid:has(.answer-mode-card:nth-child(3)) .answer-mode-card { width: min(100%, 420px); aspect-ratio: 1 / .72; }
+  .map-guess-world-layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .map-guess-world-layout .quiz-map-wrapper .carte-map, .map-guess-world-layout .quiz-map-wrapper .world-map, .map-guess-world-layout .quiz-map-wrapper .europe-map { max-height: 44svh !important; }
+  .map-guess-world-layout .quiz-map-wrapper.france-custom-map { height: min(48svh, 460px); }
+  .map-guess-world-layout .quiz-map-wrapper.france-custom-map .france-map-svg { height: min(40svh, 400px); }
+  .map-guess-answer-card { width: min(100%, 780px); }
+}
+@media (max-width: 600px) {
+  .map-guess-world-screen { min-height: calc(100svh - 68px); padding-inline: 8px; }
+  .map-guess-world-layout .quiz-map-wrapper .carte-map, .map-guess-world-layout .quiz-map-wrapper .world-map, .map-guess-world-layout .quiz-map-wrapper .europe-map { max-height: 36svh !important; }
+  .map-guess-world-layout .quiz-map-wrapper.france-custom-map { height: min(40svh, 360px); }
+  .map-guess-world-layout .quiz-map-wrapper.france-custom-map .france-map-svg { height: min(32svh, 280px); }
+  .map-guess-screen { min-height: calc(100svh - 68px); gap: 5px; padding-inline: 6px; }
+  .map-guess-heading h1 { font-size: 1.45rem; }
+  .map-guess-france-map .carte-fr-dept-stack { padding: 4px; }
+  .map-guess-france-map .france-map-svg { height: min(34svh, 360px); }
+  .map-guess-france-map .france-overseas-insets { gap: 4px; }
+  .map-guess-france-map .france-overseas-inset { padding: 3px 2px; }
+  .map-guess-france-map .france-overseas-inset svg { height: 52px; }
+  .map-guess-controls { gap: 6px; }
+  .map-guess-controls .primary-btn, .map-guess-clear { min-height: 42px; }
+  .map-guess-picked { font-size: .84rem; }
 }
 
 /* Custom quiz editor layout and personal progress */
@@ -962,3 +1025,59 @@ input[type=checkbox], input[type=radio] { accent-color: var(--gold); }
 @media (max-width: 800px) {
   .player-france-records .player-goals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Softer label accents and clearer breathing room around form fields. */
+:root {
+  --label-color: #d6cef3;
+  --control-accent: #a693ff;
+}
+.home-game-dashboard .hero-kicker,
+.config-form .section-kicker,
+.custom-builder-heading .section-kicker,
+.player-progress-heading .section-kicker {
+  color: #cfc3ff;
+}
+.home-game-dashboard .hero-kicker {
+  border-color: rgba(172,155,255,.25);
+  background: rgba(147,125,246,.09);
+}
+.answer-mode-card strong { color: #ded6ff; text-shadow: 0 2px 18px rgba(172,155,255,.16); }
+.answer-mode-card:hover .answer-mode-icon { stroke: #d8ceff; filter: drop-shadow(0 0 16px rgba(172,155,255,.4)); }
+.config-select-label,
+.config-section-title,
+.config-option-label,
+.login-form label,
+.quizfr-form label,
+.custom-builder-field { color: var(--label-color); }
+.custom-builder-details { column-gap: 20px; row-gap: 18px; margin-bottom: 20px; }
+.custom-builder-field { gap: 10px; font-size: .92rem; line-height: 1.4; }
+.custom-builder-toolbar { gap: 16px; margin-top: 2px; }
+.login-form label { gap: 9px; }
+.config-option-label { gap: 12px; margin-block: 13px; }
+.config-select-label { margin-bottom: 10px; }
+.config-select-wrapper { margin-block: 24px; }
+.quizfr-form label { margin-bottom: 7px; }
+.territory-mode-picker legend { margin-bottom: 12px; color: var(--label-color); }
+.territory-mode-option:hover,
+.territory-mode-option.selected {
+  border-color: rgba(172,155,255,.55);
+  background: linear-gradient(120deg, rgba(136,113,234,.25), rgba(172,155,255,.08));
+  box-shadow: inset 0 0 0 1px rgba(172,155,255,.1), 0 6px 16px rgba(0,0,0,.18);
+}
+.territory-mode-help { border-color: rgba(172,155,255,.38); color: #d6cbff; }
+input:focus, select:focus { border-color: var(--control-accent); outline-color: rgba(172,155,255,.16); }
+input[type=checkbox], input[type=radio] { accent-color: var(--control-accent); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline-color: rgba(172,155,255,.65); }
+.custom-continent-filters label.selected {
+  border-color: rgba(172,155,255,.48);
+  color: #ded6ff;
+  background: rgba(139,117,237,.15);
+}
+.france-mode-select .mode-btn:hover, .france-mode-select .mode-btn:focus-visible { border-color: rgba(172,155,255,.55); }
+.france-mode-select .mode-btn > span:first-child {
+  border-color: rgba(172,155,255,.3);
+  background: linear-gradient(140deg, rgba(145,124,244,.3), rgba(172,155,255,.1));
+  color: #d8ceff;
+}
+.france-overseas-inset.selected { border-color: rgba(172,155,255,.6); background: rgba(139,117,237,.14); }
+.france-overseas-inset.selected span { color: #ded6ff; }

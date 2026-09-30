@@ -10,6 +10,7 @@ import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
 import { supabase } from "../api/supabase";
 import { useAuth } from "../context/AuthContext";
 import { getCustomAnswerValue, getCustomQuestionMode, type CustomQuestionType } from "../utils/customQuizModes";
+import { isOverseasDepartment, normalizeDepartmentCode } from "../utils/franceGeography";
 import { recordCountryProgress, useQuizAttemptSave } from "../api/quizAttempts";
 import QuizAttemptStatus from "../components/QuizAttemptStatus";
 
@@ -50,6 +51,7 @@ type Answer = {
     user: string;
     isCorrect: boolean;
     questionType: CustomQuestionType;
+    mapAnswerLabel?: string;
 };
 
 type CustomQuestion = {
@@ -83,6 +85,7 @@ export default function Quiz() {
     const [countries, setCountries] = useState<Country[]>([]);
     const [current, setCurrent] = useState(0);
     const [userAnswer, setUserAnswer] = useState("");
+    const [selectedMapCode, setSelectedMapCode] = useState<string | null>(null);
     const [score, setScore] = useState(0);
     const [finished, setFinished] = useState(false);
     const [showCorrection, setShowCorrection] = useState(false);
@@ -168,7 +171,7 @@ export default function Quiz() {
             // Mode standard via URL
             setFlagsMode(query.get("flags") === "1");
             setEuMode(query.get("eu") === "1");
-            setTypeParam(query.get("type") || "multiple");
+            setTypeParam(query.get("type") === "input" ? "input" : "multiple");
             setOnlyTerritories(query.get("only_territories") === "1");
             setShowTerritories(query.get("territories") === "1");
             setNumQuestions(Number(query.get("num") ?? 99999));
@@ -213,7 +216,7 @@ export default function Quiz() {
                     const requestedType = query.get("type");
                     setTypeParam(requestedType === "input" || requestedType === "multiple"
                         ? requestedType
-                        : settings.inputType === "input" ? "input" : "multiple");
+                        : "multiple");
                     try {
                         const needsCountries = questions.some(question => getCustomQuestionMode(question.question_type)?.group === "pays");
                         const needsFrance = questions.some(question => getCustomQuestionMode(question.question_type)?.group === "france");
@@ -324,7 +327,11 @@ export default function Quiz() {
             : allCountries.find(country => country.code === question.country_code);
         if (!selectedSubject) return;
         const correctAnswer = customAnswerValue(question.question_type, selectedSubject);
-        const choices = subjects.map(subject => customAnswerValue(question.question_type, subject)).filter(Boolean);
+        const overseasRegionQuestion = question.question_type === "fr_region" && isOverseasDepartment(question.department_code);
+        const choiceSubjects = overseasRegionQuestion
+            ? allDepartments.filter(department => isOverseasDepartment(department.code))
+            : subjects;
+        const choices = choiceSubjects.map(subject => customAnswerValue(question.question_type, subject)).filter(Boolean);
         setMCOptions(getMCOptions(correctAnswer, choices));
     }, [customQuestions, allCountries, allDepartments, current, typeParam]);
 
@@ -388,10 +395,47 @@ export default function Quiz() {
         setShowCorrection(true);
     }
 
+    function handleMapSubmit() {
+        if (!selectedMapCode || showCorrection) return;
+        const selectedCode = selectedMapCode.trim().padStart(3, "0");
+        if (customQuestions) {
+            const mode = getCustomQuestionMode(questionType);
+            if (mode?.group === "france" && department) {
+                const picked = allDepartments.find(item => normalizeDepartmentCode(item.code) === normalizeDepartmentCode(selectedMapCode));
+                const isCorrect = questionType === "fr_region"
+                    ? Boolean(picked?.region && picked.region === department.region)
+                    : normalizeDepartmentCode(selectedMapCode) === normalizeDepartmentCode(department.code);
+                const expectedLabel = questionType === "fr_region" ? department.region ?? "" : department.nom;
+                setAnswers(previous => [...previous, { department, user: picked?.nom ?? selectedMapCode, isCorrect, questionType, mapAnswerLabel: expectedLabel }]);
+                setLastAnswerCorrect(isCorrect);
+                if (isCorrect) setScore(previous => previous + 1);
+                setShowCorrection(true);
+                return;
+            }
+            if (country) {
+                const isCorrect = selectedCode === country.code.trim().padStart(3, "0");
+                const picked = allCountries.find(item => item.code.trim().padStart(3, "0") === selectedCode);
+                setAnswers(previous => [...previous, { country, user: picked?.name ?? selectedMapCode, isCorrect, questionType, mapAnswerLabel: country.name }]);
+                setLastAnswerCorrect(isCorrect);
+                if (isCorrect) setScore(previous => previous + 1);
+                setShowCorrection(true);
+                return;
+            }
+        }
+        if (!country) return;
+        const isCorrect = selectedCode === country.code.trim().padStart(3, "0");
+        const picked = countries.find(item => item.code.trim().padStart(3, "0") === selectedCode);
+        setAnswers(previous => [...previous, { country, user: picked?.name ?? selectedMapCode, isCorrect, questionType: euMode ? "annee_eu" : flagsMode ? "drapeau" : "capitale", mapAnswerLabel: country.name }]);
+        setLastAnswerCorrect(isCorrect);
+        if (isCorrect) setScore(previous => previous + 1);
+        setShowCorrection(true);
+    }
+
     function handleNext() {
         setShowCorrection(false);
         setLastAnswerCorrect(false);
         setUserAnswer("");
+        setSelectedMapCode(null);
         const len = customQuestions ? customQuestions.length : countries.length;
         if (current < len - 1) setCurrent(i => i + 1);
         else setFinished(true);
@@ -459,8 +503,8 @@ export default function Quiz() {
                                 <tbody>
                                 {wrongAnswers.map((a, idx) => {
                                     const subjectName = a.country?.name ?? `${a.department?.code ?? ""} ${a.department?.nom ?? ""}`;
-                                    const correctAnswer = a.country ? customAnswerValue(a.questionType, a.country)
-                                        : a.department ? customAnswerValue(a.questionType, a.department) : "";
+                    const correctAnswer = a.mapAnswerLabel ?? (a.country ? customAnswerValue(a.questionType, a.country)
+                                        : a.department ? customAnswerValue(a.questionType, a.department) : "");
                                     return <tr key={idx}>
                                         <td>{getCustomQuestionMode(a.questionType)?.label ?? "Question"}</td>
                                         <td>{subjectName}</td>
@@ -475,7 +519,7 @@ export default function Quiz() {
                         <div className="recap-success-msg">Aucune erreur, bravo!</div>
                     )}
                     <div className="recap-actions">
-                        <button onClick={() => { setFinished(false); setCurrent(0); setScore(0); setUserAnswer(""); setAnswers([]); setLastAnswerCorrect(false); }}>Recommencer</button>
+                        <button onClick={() => { setFinished(false); setCurrent(0); setScore(0); setUserAnswer(""); setSelectedMapCode(null); setAnswers([]); setLastAnswerCorrect(false); }}>Recommencer</button>
                         <a href="/">Accueil</a>
                     </div>
                 </div>
@@ -504,50 +548,63 @@ export default function Quiz() {
         ? allDepartments.filter(item => item.region === department.region).map(item => item.code)
         : department?.code;
     const hideFranceMapAnswer = customQuestions && (questionType === "fr_departement" || questionType === "fr_region");
+    const isMapMode = false;
+    const isEuropeanQuestion = customQuestions ? questionType === "annee_eu" : euMode;
+    const revealedMapCode = isMapMode && showCorrection && !lastAnswerCorrect ? country?.code ?? "" : "";
 
     return (
-        <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""}`}>
-            <div className={`quiz-content-inner ${customQuestions ? "custom-quiz-layout" : ""}`}>
-                {(country && ((customQuestions && questionType === "drapeau") || (!customQuestions && flagsMode))) && (
+        <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""} ${isMapMode ? "map-guess-world-screen" : ""}`}>
+            <div className={`quiz-content-inner ${customQuestions ? "custom-quiz-layout" : ""} ${isMapMode ? "map-guess-world-layout" : ""}`}>
+                {(!isMapMode && country && ((customQuestions && questionType === "drapeau") || (!customQuestions && flagsMode))) && (
                     <div className={`flag-wrapper ${customQuestions ? "custom-quiz-visual france-map-panel" : ""}`}>
                         <Flag code={country.code} />
                     </div>
                 )}
                 {department && (
                     <div className="quiz-map-wrapper france-custom-map france-map-panel">
-                        <CarteFranceDept highlight={departmentHighlights} hideHighlightName={hideFranceMapAnswer} />
+                        <CarteFranceDept highlight={isMapMode ? undefined : departmentHighlights} answerHighlight={isMapMode && showCorrection && !lastAnswerCorrect ? departmentHighlights : undefined} hideHighlightName={hideFranceMapAnswer || isMapMode} selectedCode={selectedMapCode} onSelect={isMapMode && !showCorrection ? setSelectedMapCode : undefined} />
                     </div>
                 )}
-                {country && ((customQuestions && questionType === "annee_eu") || (!customQuestions && euMode)) && (
+                {country && isEuropeanQuestion && (
                     <div className={`quiz-map-wrapper ${customQuestions ? "custom-quiz-map-panel france-map-panel" : ""}`}>
-                        <CarteMonde codeISO={country.code} region="europe" />
+                        <CarteMonde codeISO={isMapMode ? revealedMapCode : country.code} region="europe" selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={isMapMode && !showCorrection ? setSelectedMapCode : undefined} focusCode={isMapMode ? country.code : undefined} />
                     </div>
                 )}
-                {country && ((customQuestions && questionType === "capitale") || (!customQuestions && !euMode && !flagsMode)) && (
+                {country && !isEuropeanQuestion && (isMapMode || ((customQuestions && questionType === "capitale") || (!customQuestions && !euMode && !flagsMode))) && (
                     <div className={`quiz-map-wrapper ${customQuestions ? "custom-quiz-map-panel france-map-panel" : ""}`}>
-                        <CarteMonde codeISO={country.code} />
+                        <CarteMonde codeISO={isMapMode ? "" : country.code} selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={isMapMode && !showCorrection ? setSelectedMapCode : undefined} focusCode={isMapMode ? country.code : undefined} />
                     </div>
                 )}
                 <form
-                    className={`quiz-card ${typeParam === "input" ? "input-mode" : ""} ${customQuestions ? "custom-quiz-answer france-answer-panel" : ""}`}
-                    onSubmit={typeParam === "multiple" ? e => e.preventDefault() : handleSubmit}
+                    className={`quiz-card ${typeParam === "input" ? "input-mode" : ""} ${isMapMode ? "map-guess-answer-card" : ""} ${customQuestions ? "custom-quiz-answer france-answer-panel" : ""}`}
+                    onSubmit={typeParam !== "input" ? e => e.preventDefault() : handleSubmit}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
                 >
                     <h2>
-                        {customQuestions
+                        {isMapMode
+                            ? customQuestions ? "Localise l’élément affiché sur la carte :" : "Localise ce pays sur la carte :"
+                            : customQuestions
                             ? customPrompt(questionType)
                             : euMode ? "Année d'adhésion à l'Union Européenne :"
                                 : flagsMode ? "Quel est ce pays ?"
                                     : "Devine la capitale de"}
                     </h2>
-                    <div className={`quiz-country ${((customQuestions && customQuestionMode?.showSubject) || (!customQuestions && !flagsMode && !euMode)) ? "quiz-country-target" : ""}`}>
-                        {customQuestions
+                    <div className={`quiz-country ${isMapMode || ((customQuestions && customQuestionMode?.showSubject) || (!customQuestions && !flagsMode && !euMode)) ? "quiz-country-target" : ""}`}>
+                        {isMapMode
+                            ? department?.nom ?? country?.name
+                            : customQuestions
                             ? customQuestionMode?.showSubject ? department?.nom ?? country?.name : null
                             : flagsMode ? null : country?.name}
                     </div>
                     <div className="quiz-form">
-                        {typeParam === "multiple"
+                        {isMapMode ? (
+                            <div className="map-guess-controls map-guess-world-controls">
+                                <span className="map-guess-picked" aria-live="polite">{selectedMapCode ? "Zone présélectionnée" : "Sélectionne une zone sur la carte"}</span>
+                                <button type="button" className="map-guess-clear" disabled={!selectedMapCode || showCorrection} onClick={() => setSelectedMapCode(null)}>Effacer</button>
+                                {!showCorrection ? <button type="button" className="primary-btn" disabled={!selectedMapCode} onClick={handleMapSubmit}>Valider</button> : <button ref={nextButtonRef} type="button" className="primary-btn" onClick={handleNext}>{current === finishedLength - 1 ? "Voir le résultat" : "Suivant"}</button>}
+                            </div>
+                        ) : typeParam === "multiple" || typeParam === "map"
                             ? (
                                 <MultipleChoice
                                     options={mcOptions}
@@ -595,7 +652,7 @@ export default function Quiz() {
                                 </>
                             )
                         }
-                        {showCorrection && (
+                        {showCorrection && !isMapMode && (
                             <button
                                 ref={nextButtonRef}
                                 className="quiz-btn-next"
@@ -614,8 +671,10 @@ export default function Quiz() {
                                 ? "Bonne réponse ! 👏"
                                 : (
                                     customQuestions
-                                        ? <>Mauvaise réponse.<br />La bonne réponse était <b>{correctChoice}</b></>
-                                        : (euMode
+                                        ? <>Mauvaise réponse.<br />La bonne réponse était <b>{isMapMode ? (department?.region ?? department?.nom ?? country?.name) : correctChoice}</b></>
+                                        : (isMapMode
+                                                ? <>Mauvaise réponse.<br />La bonne zone était <b>{country?.name}</b></>
+                                                : euMode
                                                 ? <>Mauvaise réponse.<br />La bonne année était <b>{country?.ue_date ? country.ue_date.slice(0, 4) : "?"}</b></>
                                                 : flagsMode
                                                     ? <>Mauvaise réponse.<br />La bonne réponse était <b>{country?.name}</b></>

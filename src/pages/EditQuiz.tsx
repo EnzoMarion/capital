@@ -11,7 +11,6 @@ export default function EditQuiz() {
     const { id } = useParams<{ id: string }>();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [inputType, setInputType] = useState<"multiple" | "input">("multiple");
     const [selectedQuestions, setSelectedQuestions] = useState<CustomQuestion[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [quizLoading, setQuizLoading] = useState(true);
@@ -36,7 +35,6 @@ export default function EditQuiz() {
                 } else if (data.settings && typeof data.settings === "object" && !Array.isArray(data.settings)) {
                     settings = data.settings as Record<string, unknown>;
                 }
-                setInputType(settings?.inputType === "input" ? "input" : "multiple");
                 const questions = settings?.questions;
                 setSelectedQuestions(Array.isArray(questions) ? questions as CustomQuestion[] : []);
             } catch {
@@ -68,7 +66,7 @@ export default function EditQuiz() {
         try {
             const { error: updateError } = await supabase.from("quizzes").update({
                 title: title.trim(), description: description.trim(),
-                settings: { questions: selectedQuestions, mode: "custom_sequence", inputType },
+                settings: { questions: selectedQuestions, mode: "custom_sequence" },
             }).eq("id", id).eq("user_id", user.id);
             if (updateError) setError("La modification n’a pas pu être enregistrée.");
             else navigate("/#mes-quiz");
@@ -87,7 +85,6 @@ export default function EditQuiz() {
             <CustomQuizBuilder
                 title={title} setTitle={setTitle}
                 description={description} setDescription={setDescription}
-                inputType={inputType} setInputType={setInputType}
                 selectedQuestions={selectedQuestions} setSelectedQuestions={setSelectedQuestions}
             />
             {error && <p className="quiz-create-error" role="alert">{error}</p>}

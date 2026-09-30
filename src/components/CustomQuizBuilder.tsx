@@ -24,14 +24,12 @@ function normalize(value: string) {
 }
 
 export default function CustomQuizBuilder({
-    title, setTitle, description, setDescription, inputType, setInputType, selectedQuestions, setSelectedQuestions,
+    title, setTitle, description, setDescription, selectedQuestions, setSelectedQuestions,
 }: {
     title: string;
     setTitle: (value: string) => void;
     description: string;
     setDescription: (value: string) => void;
-    inputType: "multiple" | "input";
-    setInputType: (value: "multiple" | "input") => void;
     selectedQuestions: CustomQuestion[];
     setSelectedQuestions: (update: (previous: CustomQuestion[]) => CustomQuestion[]) => void;
 }) {
@@ -101,7 +99,7 @@ export default function CustomQuizBuilder({
             <header className="custom-builder-heading">
                 <p className="section-kicker">Collection personnalisée</p>
                 <h1>Créer un quiz personnalisé</h1>
-                <p>Choisis les questions du monde et de France, puis définis le mode de réponse.</p>
+            <p>Choisis les questions à inclure. Tu choisiras le mode de réponse au lancement.</p>
             </header>
 
             <section className="custom-builder-details" aria-label="Informations du quiz">
@@ -112,18 +110,6 @@ export default function CustomQuizBuilder({
                     <input value={description} onChange={event => setDescription(event.target.value)} placeholder="Quelques mots pour décrire ce quiz" />
                 </label>
             </section>
-
-            <fieldset className="custom-answer-type">
-                <legend>Mode de réponse</legend>
-                <label className={inputType === "multiple" ? "selected" : ""}>
-                    <input type="radio" name="custom-answer-type" checked={inputType === "multiple"} onChange={() => setInputType("multiple")} />
-                    <span className="custom-answer-icon" aria-hidden="true">◈</span><span><strong>QCM</strong><small>Choisir une réponse</small></span>
-                </label>
-                <label className={inputType === "input" ? "selected" : ""}>
-                    <input type="radio" name="custom-answer-type" checked={inputType === "input"} onChange={() => setInputType("input")} />
-                    <span className="custom-answer-icon" aria-hidden="true">⌨</span><span><strong>Saisie libre</strong><small>Écrire la réponse</small></span>
-                </label>
-            </fieldset>
 
             <div className="custom-builder-toolbar">
                 <label><span className="sr-only">Rechercher un pays ou département</span>

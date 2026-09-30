@@ -24,7 +24,8 @@ export default function SelectMode() {
 
     if (franceMode) {
         const route = franceMode === "regions" ? "/quiz-france-regions" : "/quiz-france-depts";
-        const type = sourceParams.get("type") === "input" ? "input" : "multiple";
+        const requestedType = sourceParams.get("type");
+        const type = requestedType === "input" || requestedType === "map" ? requestedType : "multiple";
         const gameParam = franceMode === "departments" || franceMode === "depts" || franceMode === "1" ? "&game=department" : "";
         return <Navigate to={`${route}?type=${type}${gameParam}`} replace />;
     }

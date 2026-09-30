@@ -1,18 +1,25 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import AnswerModeChoices from "../components/AnswerModeChoices";
+import AnswerModeChoices, { type AnswerMode } from "../components/AnswerModeChoices";
 
 export default function QuizTypeSelect() {
     const navigate = useNavigate();
     const location = useLocation();
+    const params = new URLSearchParams(location.search);
+    const personalQuizId = params.get("quiz_id");
+    const franceMode = params.get("france");
+    const showMap = !personalQuizId && ["regions", "departments", "depts", "1"].includes(franceMode ?? "");
 
-    function selectType(type: "input" | "multiple") {
-        const params = new URLSearchParams(location.search);
-        params.set("type", type);
-        const franceMode = params.get("france");
+    function selectType(type: AnswerMode) {
+        const selectedType = type === "map" && !showMap ? "multiple" : type;
+        params.set("type", selectedType);
+        if (personalQuizId || params.get("eu") === "1") {
+            navigate(`/quiz?${params.toString()}`);
+            return;
+        }
         if (franceMode) {
             const route = franceMode === "regions" ? "/quiz-france-regions" : "/quiz-france-depts";
             const gameParam = franceMode === "departments" || franceMode === "depts" || franceMode === "1" ? "&game=department" : "";
-            navigate(`${route}?type=${type}${gameParam}`);
+            navigate(`${route}?type=${selectedType}${gameParam}`);
             return;
         }
         navigate(`/modes?${params.toString()}`);
@@ -21,7 +28,7 @@ export default function QuizTypeSelect() {
     return (
         <main className="answer-mode-page">
             <h1>Quel mode de réponse ?</h1>
-            <AnswerModeChoices onSelect={selectType} />
+            <AnswerModeChoices onSelect={selectType} showMap={showMap} />
         </main>
     );
 }

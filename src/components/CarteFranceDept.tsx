@@ -61,7 +61,7 @@ function normalizeCode(code: string | undefined) {
     return code?.trim().padStart(2, "0") ?? "";
 }
 
-export function CarteFranceDept({ highlight, hideHighlightName = false }: { highlight?: string | string[]; hideHighlightName?: boolean }) {
+export function CarteFranceDept({ highlight, answerHighlight, hideHighlightName = false, selectedCode, onSelect }: { highlight?: string | string[]; answerHighlight?: string | string[]; hideHighlightName?: boolean; selectedCode?: string | null; onSelect?: (code: string) => void }) {
     const [collection, setCollection] = useState<DepartmentCollection | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -109,34 +109,40 @@ export function CarteFranceDept({ highlight, hideHighlightName = false }: { high
     }, [collection]);
 
     const highlightedCodes = useMemo(() => new Set((Array.isArray(highlight) ? highlight : highlight ? [highlight] : []).map(normalizeCode)), [highlight]);
+    const answerCodes = useMemo(() => new Set((Array.isArray(answerHighlight) ? answerHighlight : answerHighlight ? [answerHighlight] : []).map(normalizeCode)), [answerHighlight]);
+    const pickedCode = normalizeCode(selectedCode ?? undefined);
     const mapTitle = highlightedCodes.size
         ? hideHighlightName ? "Carte de France métropolitaine et d’outre-mer avec une zone mise en évidence" : `Carte des départements français avec ${highlightedCodes.size} zone${highlightedCodes.size > 1 ? "s" : ""} mise${highlightedCodes.size > 1 ? "s" : ""} en évidence`
         : "Carte de France métropolitaine et des cinq régions d’outre-mer";
 
     return (
-        <div className="carte-fr-dept-stack" role="img" aria-label={mapTitle}>
+        <div className={`carte-fr-dept-stack${onSelect ? " france-map-interactive" : ""}`} role={onSelect ? "group" : "img"} aria-label={mapTitle}>
             {loading && <div className="map-loading">Chargement de la carte de France…</div>}
             {error && <div className="map-error" role="alert">La carte de France n’a pas pu être chargée.</div>}
             {!loading && !error && paths.length > 0 && <>
-                <svg className="france-map-svg" viewBox="0 0 720 660" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                <svg className="france-map-svg" viewBox="0 0 720 660" preserveAspectRatio="xMidYMid meet" aria-hidden={!onSelect}>
                     <title>{mapTitle}</title>
                     {paths.map(feature => {
                         const selected = highlightedCodes.has(normalizeCode(feature.code));
-                        return <path key={feature.code} d={feature.path} className={`fr-dept-shape${selected ? " fr-dept-selected" : ""}`} fillRule="evenodd">
-                            <title>{selected && hideHighlightName ? "Zone mise en évidence" : `${feature.name} (${feature.code})`}</title>
+                        const isAnswer = answerCodes.has(normalizeCode(feature.code));
+                        const picked = pickedCode === normalizeCode(feature.code);
+                        return <path key={feature.code} d={feature.path} role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} aria-label={onSelect ? `Choisir ${feature.name}, ${feature.code}` : undefined} onClick={onSelect ? () => onSelect(feature.code) : undefined} onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(feature.code); } } : undefined} className={`fr-dept-shape${selected ? " fr-dept-selected" : ""}${isAnswer ? " fr-dept-answer" : ""}${picked ? " fr-dept-pick" : ""}`} fillRule="evenodd">
+                            <title>{onSelect && hideHighlightName ? (picked ? "Selected area" : "Area") : selected && hideHighlightName ? "Highlighted area" : `${feature.name} (${feature.code})`}</title>
                         </path>;
                     })}
                 </svg>
-                <div className="france-overseas-insets" aria-hidden="true">
+                <div className="france-overseas-insets" aria-hidden={!onSelect}>
                     <small className="france-overseas-heading">Outre-mer · zones agrandies</small>
                     {OVERSEAS_DEPARTMENTS.map((region, index) => {
                         const selected = highlightedCodes.has(region.code);
-                        return <div className={`france-overseas-inset${selected ? " selected" : ""}`} key={region.code}>
+                        const isAnswer = answerCodes.has(region.code);
+                        const picked = pickedCode === region.code;
+                        return <div className={`france-overseas-inset${selected ? " selected" : ""}${picked ? " picked" : ""}`} key={region.code} role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} aria-label={onSelect ? `Choisir ${region.name}, ${region.code}` : undefined} onClick={onSelect ? () => onSelect(region.code) : undefined} onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(region.code); } } : undefined}>
                             <svg viewBox="0 0 120 90" preserveAspectRatio="xMidYMid meet">
-                                <title>{selected && hideHighlightName ? "Zone d’outre-mer mise en évidence" : `${region.name} (${region.code})`}</title>
-                                {region.paths.map((path, pathIndex) => <path key={pathIndex} d={path} className={`fr-dept-shape${selected ? " fr-dept-selected" : ""}`} />)}
+                                <title>{onSelect && hideHighlightName ? (picked ? "Selected area" : "Territory") : selected && hideHighlightName ? "Highlighted territory" : `${region.name} (${region.code})`}</title>
+                                {region.paths.map((path, pathIndex) => <path key={pathIndex} d={path} className={`fr-dept-shape${selected ? " fr-dept-selected" : ""}${isAnswer ? " fr-dept-answer" : ""}${picked ? " fr-dept-pick" : ""}`} />)}
                             </svg>
-                            <span>{hideHighlightName ? `OM ${index + 1}` : <><strong>{region.code}</strong><small>{region.name}</small></>}</span>
+                            {!hideHighlightName && <span><strong>{region.code}</strong><small>{region.name}</small></span>}
                         </div>;
                     })}
                 </div>

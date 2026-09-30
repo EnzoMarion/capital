@@ -5,10 +5,11 @@ import { CarteFranceDept } from "../components/CarteFranceDept";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
 import { useAuth } from "../context/AuthContext";
 import { useQuizAttemptSave } from "../api/quizAttempts";
+import { isOverseasDepartment, normalizeDepartmentCode } from "../utils/franceGeography";
 
 type Department = { id: number; code: string; nom: string; region: string | null };
 type Region = { name: string; departmentCodes: string[] };
-type AnswerMode = "input" | "multiple";
+type AnswerMode = "input" | "multiple" | "map";
 
 function shuffle<T>(items: T[]) {
     const copy = [...items];
@@ -25,11 +26,13 @@ function normalize(value: string) {
 
 export default function QuizFranceRegions() {
     const [searchParams] = useSearchParams();
-    const mode: AnswerMode = searchParams.get("type") === "input" ? "input" : "multiple";
+    const mode: AnswerMode = searchParams.get("type") === "input" ? "input" : searchParams.get("type") === "map" ? "map" : "multiple";
     const [regions, setRegions] = useState<Region[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [order, setOrder] = useState<number[]>([]);
     const [current, setCurrent] = useState(0);
     const [answer, setAnswer] = useState("");
+    const [selectedMapCode, setSelectedMapCode] = useState<string | null>(null);
     const [answers, setAnswers] = useState<FranceAnswer[]>([]);
     const [showCorrection, setShowCorrection] = useState(false);
     const [finished, setFinished] = useState(false);
@@ -47,6 +50,7 @@ export default function QuizFranceRegions() {
             if (queryError) setError("Les données des régions françaises n’ont pas pu être chargées.");
             else {
                 const rows = ((data ?? []) as Department[]).filter(item => item.code && item.nom && item.region);
+                setDepartments(rows);
                 const byRegion = new Map<string, Set<string>>();
                 rows.forEach(item => {
                     const codes = byRegion.get(item.region!) ?? new Set<string>();
@@ -70,7 +74,11 @@ export default function QuizFranceRegions() {
     const region = regions[order[current]];
     const options = useMemo(() => {
         if (!region || mode !== "multiple") return [];
-        return shuffle([region.name, ...shuffle(regions.filter(item => item.name !== region.name).map(item => item.name)).slice(0, 3)]);
+        const overseasQuestion = region.departmentCodes.some(isOverseasDepartment);
+        const possibleRegions = overseasQuestion
+            ? regions.filter(item => item.departmentCodes.some(isOverseasDepartment))
+            : regions;
+        return shuffle([region.name, ...shuffle(possibleRegions.filter(item => item.name !== region.name).map(item => item.name)).slice(0, 3)]);
     }, [mode, region, regions]);
     const latestAnswer = answers[answers.length - 1];
 
@@ -106,6 +114,7 @@ export default function QuizFranceRegions() {
         if (current === order.length - 1) { setFinished(true); return; }
         setCurrent(index => index + 1);
         setAnswer("");
+        setSelectedMapCode(null);
         setShowCorrection(false);
     }
 
@@ -113,6 +122,7 @@ export default function QuizFranceRegions() {
         setOrder(shuffle(regions.map((_, index) => index)));
         setCurrent(0);
         setAnswer("");
+        setSelectedMapCode(null);
         setAnswers([]);
         setShowCorrection(false);
         setFinished(false);
@@ -124,6 +134,29 @@ export default function QuizFranceRegions() {
         return <FranceQuizResult title="Régions françaises" answers={answers} onRestart={restart} saveStatus={attemptSave.status} saveError={attemptSave.errorMessage} onRetrySave={attemptSave.retry} />;
     }
     if (!region) return <p className="empty-state">Aucune région disponible pour ce quiz.</p>;
+
+    if (mode === "map") {
+        const pickedDepartment = departments.find(item => normalizeDepartmentCode(item.code) === normalizeDepartmentCode(selectedMapCode ?? undefined));
+        const latestMapAnswer = answers[answers.length - 1];
+        const selectedRegionCodes = pickedDepartment?.region ? departments.filter(item => item.region === pickedDepartment.region).map(item => item.code) : [];
+        const revealCorrect = showCorrection && !latestMapAnswer?.isCorrect;
+        return <main className="map-guess-screen france-map-guess-screen">
+            <div className="map-guess-heading"><p className="section-kicker">France · Carte muette · Régions</p><h1>Localise cette région</h1><p><strong>{region.name}</strong></p></div>
+            <div className="map-guess-france-map"><CarteFranceDept highlight={selectedRegionCodes} answerHighlight={revealCorrect ? region.departmentCodes : undefined} hideHighlightName onSelect={showCorrection ? undefined : setSelectedMapCode} /></div>
+            <div className="map-guess-controls"><span className="map-guess-picked" aria-live="polite">{selectedMapCode ? "Région présélectionnée" : "Touchez un département de la région"}</span><button type="button" className="map-guess-clear" disabled={!selectedMapCode || showCorrection} onClick={() => setSelectedMapCode(null)}>Effacer</button>
+                {!showCorrection ? <button type="button" className="primary-btn" disabled={!selectedMapCode} onClick={() => {
+                    if (!selectedMapCode) return;
+                    const chosen = departments.find(item => normalizeDepartmentCode(item.code) === normalizeDepartmentCode(selectedMapCode));
+                    const isCorrect = region.departmentCodes.some(code => normalizeDepartmentCode(code) === normalizeDepartmentCode(selectedMapCode));
+                    setAnswer(chosen?.nom ?? selectedMapCode);
+                    setAnswers(previous => [...previous, { question: `Localiser la région ${region.name}`, userAnswer: chosen?.nom ?? selectedMapCode, correctAnswer: region.name, isCorrect }]);
+                    setShowCorrection(true);
+                }}>Valider</button> : <button ref={nextButtonRef} type="button" className="primary-btn" onClick={next}>{current === order.length - 1 ? "Voir le résultat" : "Suivant"}</button>}
+            </div>
+            {showCorrection && <p className={`quiz-correction ${latestMapAnswer?.isCorrect ? "correct" : "wrong"}`} role="status">{latestMapAnswer?.isCorrect ? "Bonne réponse !" : <>La région était <strong>{region.name}</strong>.</>}</p>}
+            <div className="map-guess-progress">Question {current + 1} sur {order.length} · {answers.filter(item => item.isCorrect).length} bonne{answers.filter(item => item.isCorrect).length === 1 ? "" : "s"} réponse{answers.filter(item => item.isCorrect).length === 1 ? "" : "s"}</div>
+        </main>;
+    }
 
     return (
         <main className="quizfr-wrapper france-game-card">
