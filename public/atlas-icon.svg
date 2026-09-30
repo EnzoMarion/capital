@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="atlas-bg" x1="17" y1="8" x2="111" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5146a9"/>
+      <stop offset=".55" stop-color="#26234f"/>
+      <stop offset="1" stop-color="#171d37"/>
+    </linearGradient>
+    <linearGradient id="atlas-globe" x1="32" y1="28" x2="95" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#91f0dc"/>
+      <stop offset="1" stop-color="#5cb9c7"/>
+    </linearGradient>
+    <clipPath id="atlas-clip"><circle cx="64" cy="64" r="61"/></clipPath>
+  </defs>
+  <g clip-path="url(#atlas-clip)">
+    <circle cx="64" cy="64" r="61" fill="url(#atlas-bg)"/>
+    <circle cx="64" cy="64" r="45" stroke="url(#atlas-globe)" stroke-opacity=".46" stroke-width="2"/>
+    <ellipse cx="64" cy="64" rx="20" ry="45" stroke="url(#atlas-globe)" stroke-opacity=".38" stroke-width="1.8"/>
+    <path d="M20 64h88M25.4 46.5c11.3 5.1 24.2 7.7 38.6 7.7s27.3-2.6 38.6-7.7M25.4 81.5c11.3-5.1 24.2-7.7 38.6-7.7s27.3 2.6 38.6 7.7" stroke="url(#atlas-globe)" stroke-opacity=".38" stroke-width="1.8"/>
+    <path d="m35 94 21.9-57.1c2.4-6.3 11.3-6.3 13.7 0L93 94" stroke="#fffefa" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M46.5 70h35" stroke="#8ff0dc" stroke-width="8.5" stroke-linecap="round"/>
+    <path d="m96 91 3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" fill="#ffe19a"/>
+  </g>
+  <circle cx="64" cy="64" r="61" stroke="#fffefa" stroke-opacity=".82" stroke-width="3"/>
+</svg>

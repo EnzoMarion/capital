@@ -4,7 +4,13 @@ import { supabase } from "../api/supabase";
 export type AuthUser = {
     email: string;
     id: string;
+    avatarUrl?: string | null;
 } | null;
+
+function avatarUrlFromMetadata(metadata: Record<string, unknown> | undefined) {
+    const value = metadata?.avatar_url ?? metadata?.picture;
+    return typeof value === "string" && /^https?:\/\//i.test(value) ? value : null;
+}
 
 type AuthContextValue = { user: AuthUser; setUser: (u: AuthUser) => void; loading: boolean };
 const AuthContext = createContext<AuthContextValue>({ user: null, setUser: () => {}, loading: true });
@@ -19,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             authEventReceived = true;
             const email = session?.user?.email;
             const id = session?.user?.id;
-            if (email && id) setUser({ email, id });
+            if (email && id) setUser({ email, id, avatarUrl: avatarUrlFromMetadata(session?.user?.user_metadata) });
             else setUser(null);
             setLoading(false);
         });
@@ -28,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!authEventReceived) {
                 const email = data.session?.user.email;
                 const id = data.session?.user.id;
-                setUser(email && id ? { email, id } : null);
+                setUser(email && id ? { email, id, avatarUrl: avatarUrlFromMetadata(data.session?.user?.user_metadata) } : null);
                 setLoading(false);
             }
         }).catch(() => setLoading(false));

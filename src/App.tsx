@@ -36,10 +36,23 @@ function QuizRoute() {
 
 function AppHeader() {
     const location = useLocation();
+    const { user } = useAuth();
     return (
         <header className="app-header">
             <Link to="/" className="brand-link" aria-label="Atlas, accueil">
-                <span className="brand-mark" aria-hidden="true">A</span><span className="brand-name">Atlas</span>
+                <span className="brand-mark" aria-hidden="true">
+                    <img
+                        className="brand-avatar"
+                        src={user?.avatarUrl || "/atlas-icon.svg"}
+                        alt=""
+                        onError={event => {
+                            if (event.currentTarget.dataset.fallback) return;
+                            event.currentTarget.dataset.fallback = "true";
+                            event.currentTarget.src = "/atlas-icon.svg";
+                        }}
+                    />
+                </span>
+                <span className="brand-name">Atlas</span>
             </Link>
             <div className="app-actions">
                 {location.pathname !== "/" && location.pathname !== "/login" && <BackButton />}
