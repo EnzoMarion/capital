@@ -80,6 +80,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
     const frameRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const rotationRef = useRef<Coordinate>([0, 0]);
+    const previousFocusKey = useRef("");
     const zoomRef = useRef(zoom);
     const renderFrameRef = useRef(0);
     const suppressClickUntil = useRef(0);
@@ -89,6 +90,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         const match = geographies.find(geo => countryCode(geo) === focusedCode);
         return match ? geoCentroid(match) as Coordinate : undefined;
     }, [focusedCode, geographies, smallTarget]);
+    const focusKey = `${focusedCode ?? ""}:${center?.[0] ?? ""}:${center?.[1] ?? ""}`;
 
     useEffect(() => {
         let active = true;
@@ -186,11 +188,13 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
     }, [scheduleDraw, zoom, geographies]);
 
     useEffect(() => {
+        if (previousFocusKey.current === focusKey) return;
+        previousFocusKey.current = focusKey;
         rotationRef.current = center ? [-center[0], -center[1]] : [0, 0];
         zoomRef.current = smallTarget ? 1.65 : 1;
         setZoom(zoomRef.current);
         scheduleDraw();
-    }, [center, focusedCode, scheduleDraw, smallTarget]);
+    }, [center, focusKey, scheduleDraw, smallTarget]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -253,7 +257,9 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             const canvas = canvasRef.current;
             const size = canvas ? Math.min(canvas.clientWidth, canvas.clientHeight) : 350;
             const degreesPerPixel = 180 / Math.max(130, size);
-            rotationRef.current = [startRotation[0] + (lastX - startX) * degreesPerPixel, Math.max(-85, Math.min(85, startRotation[1] + (lastY - startY) * degreesPerPixel))];
+            // Keep the sphere moving with the pointer: screen Y grows downward,
+            // while the orthographic camera latitude grows upward.
+            rotationRef.current = [startRotation[0] + (lastX - startX) * degreesPerPixel, Math.max(-85, Math.min(85, startRotation[1] - (lastY - startY) * degreesPerPixel))];
             scheduleDraw();
         };
         const finish = () => {
@@ -272,7 +278,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
                 previousFrame = time;
                 momentum *= Math.pow(.92, delta / 16);
                 if (momentum < .06) return;
-                rotationRef.current = [rotationRef.current[0] + coastX * momentum * delta / 16, Math.max(-85, Math.min(85, rotationRef.current[1] + coastY * momentum * delta / 16))];
+                rotationRef.current = [rotationRef.current[0] + coastX * momentum * delta / 16, Math.max(-85, Math.min(85, rotationRef.current[1] - coastY * momentum * delta / 16))];
                 draw();
                 renderFrameRef.current = requestAnimationFrame(coast);
             };
