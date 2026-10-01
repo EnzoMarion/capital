@@ -199,6 +199,39 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         scheduleDraw();
     }, [center, focusKey, scheduleDraw, smallTarget]);
 
+    const selectCountryAt = useCallback((clientX: number, clientY: number) => {
+        if (!onSelect || performance.now() < suppressClickUntil.current) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const radius = Math.min(rect.width, rect.height) * .49;
+        const normalized = [(x - centerX) / radius, (y - centerY) / radius] as [number, number];
+        if (normalized[0] ** 2 + normalized[1] ** 2 > 1) return;
+        const projection = geoOrthographic().translate([centerX, centerY]).scale(radius * zoomRef.current).rotate([rotationRef.current[0], rotationRef.current[1], 0]).clipAngle(90);
+        const coordinate = projection.invert?.([x, y]) as Coordinate | undefined;
+        if (!coordinate) return;
+
+        for (const [code, item] of Object.entries(SMALL_COUNTRIES)) {
+            if (geoDistance([-rotationRef.current[0], -rotationRef.current[1]], item.coordinates) > Math.PI / 2) continue;
+            const point = projection(item.coordinates);
+            if (point && Math.hypot(point[0] - x, point[1] - y) <= Math.max(9, rect.width * .026)) {
+                onSelect(code);
+                return;
+            }
+        }
+        for (let index = geographies.length - 1; index >= 0; index -= 1) {
+            const geo = geographies[index];
+            if (geoContains(geo as never, coordinate)) {
+                onSelect(countryCode(geo));
+                return;
+            }
+        }
+    }, [geographies, onSelect]);
+
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -281,6 +314,12 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             }
             const gesture = touchGesture;
             touchGesture = null;
+            const touch = event.changedTouches[0];
+            if (event.type === "touchend" && !gesture.dragged && touch) {
+                selectCountryAt(touch.clientX, touch.clientY);
+                suppressClickUntil.current = performance.now() + 450;
+                return;
+            }
             if (gesture.dragged) suppressClickUntil.current = performance.now() + 450;
             const coastX = Math.max(-3.5, Math.min(3.5, gesture.velocityX * .34 * 16));
             const coastY = Math.max(-3.5, Math.min(3.5, gesture.velocityY * .34 * 16));
@@ -311,7 +350,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             element.removeEventListener("touchend", endGesture);
             element.removeEventListener("touchcancel", endGesture);
         };
-    }, [draw, scheduleDraw]);
+    }, [draw, scheduleDraw, selectCountryAt]);
 
     const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
         if (event.pointerType === "touch") return;
@@ -373,37 +412,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         window.addEventListener("pointercancel", finish, { once: true });
     };
 
-    const handleCanvasClick = (event: ReactMouseEvent<HTMLCanvasElement>) => {
-        if (!onSelect || performance.now() < suppressClickUntil.current) return;
-        const canvas = event.currentTarget;
-        const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        const radius = Math.min(rect.width, rect.height) * .49;
-        const normalized = [(x - centerX) / radius, (y - centerY) / radius] as [number, number];
-        if (normalized[0] ** 2 + normalized[1] ** 2 > 1) return;
-        const projection = geoOrthographic().translate([centerX, centerY]).scale(radius * zoomRef.current).rotate([rotationRef.current[0], rotationRef.current[1], 0]).clipAngle(90);
-        const coordinate = projection.invert?.([x, y]) as Coordinate | undefined;
-        if (!coordinate) return;
-
-        for (const [code, item] of Object.entries(SMALL_COUNTRIES)) {
-            if (geoDistance([-rotationRef.current[0], -rotationRef.current[1]], item.coordinates) > Math.PI / 2) continue;
-            const point = projection(item.coordinates);
-            if (point && Math.hypot(point[0] - x, point[1] - y) <= Math.max(9, rect.width * .026)) {
-                onSelect(code);
-                return;
-            }
-        }
-        for (let index = geographies.length - 1; index >= 0; index -= 1) {
-            const geo = geographies[index];
-            if (geoContains(geo as never, coordinate)) {
-                onSelect(countryCode(geo));
-                return;
-            }
-        }
-    };
+    const handleCanvasClick = (event: ReactMouseEvent<HTMLCanvasElement>) => selectCountryAt(event.clientX, event.clientY);
 
     if (europeOnly) {
         return <div className="carte-fullscreen-stack">
