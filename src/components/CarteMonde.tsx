@@ -6,6 +6,8 @@ import type { Feature, FeatureCollection, Geometry } from "geojson";
 
 // The same compact 110m TopoJSON is used by the non-interactive Europe map.
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
+const MIN_GLOBE_ZOOM = .65;
+const MAX_GLOBE_ZOOM = 5.2;
 type Coordinate = [number, number];
 type WorldCountry = Feature<Geometry, { name?: string; [key: string]: unknown }>;
 type WorldTopology = { objects: { countries: object } };
@@ -115,15 +117,18 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         if (!context) return;
         context.setTransform(dpr, 0, 0, dpr, 0, 0);
         context.clearRect(0, 0, bounds.width, bounds.height);
+        context.fillStyle = "#0b1121";
+        context.fillRect(0, 0, bounds.width, bounds.height);
         const cx = bounds.width / 2;
         const cy = bounds.height / 2;
         const radius = size * .49;
-        const sphere = context.createRadialGradient(cx - radius * .34, cy - radius * .42, radius * .04, cx, cy, radius);
+        const globeRadius = radius * zoomRef.current;
+        const sphere = context.createRadialGradient(cx - globeRadius * .34, cy - globeRadius * .42, globeRadius * .04, cx, cy, globeRadius);
         sphere.addColorStop(0, "#344970");
         sphere.addColorStop(.62, "#172545");
         sphere.addColorStop(1, "#0b1121");
         context.beginPath();
-        context.arc(cx, cy, radius, 0, Math.PI * 2);
+        context.arc(cx, cy, globeRadius, 0, Math.PI * 2);
         context.fillStyle = sphere;
         context.fill();
         context.save();
@@ -134,7 +139,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         const rotation = rotationRef.current;
         const projection = geoOrthographic()
             .translate([cx, cy])
-            .scale(radius * zoomRef.current)
+            .scale(globeRadius)
             .rotate([rotation[0], rotation[1], 0])
             .clipAngle(90)
             .precision(.35);
@@ -214,23 +219,104 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         const stopPageScroll = (event: WheelEvent) => {
             event.preventDefault();
             event.stopPropagation();
-            zoomRef.current = Math.max(1, Math.min(2.2, zoomRef.current * Math.exp(-event.deltaY * .0015)));
+            zoomRef.current = Math.max(MIN_GLOBE_ZOOM, Math.min(MAX_GLOBE_ZOOM, zoomRef.current * Math.exp(-event.deltaY * .0023)));
             setZoom(zoomRef.current);
             scheduleDraw();
         };
-        const stopTouchScroll = (event: TouchEvent) => {
+        type TouchGesture = { mode: "rotate"; startX: number; startY: number; startRotation: Coordinate; lastX: number; lastY: number; lastAt: number; velocityX: number; velocityY: number; dragged: boolean } | { mode: "pinch"; startDistance: number; startZoom: number };
+        let touchGesture: TouchGesture | null = null;
+        const distance = (a: Touch, b: Touch) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        const startGesture = (event: TouchEvent) => {
+            if (event.cancelable) event.preventDefault();
+            if (event.touches.length > 1) {
+                touchGesture = { mode: "pinch", startDistance: Math.max(1, distance(event.touches[0], event.touches[1])), startZoom: zoomRef.current };
+                suppressClickUntil.current = performance.now() + 500;
+            } else if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                touchGesture = { mode: "rotate", startX: touch.clientX, startY: touch.clientY, startRotation: [...rotationRef.current], lastX: touch.clientX, lastY: touch.clientY, lastAt: performance.now(), velocityX: 0, velocityY: 0, dragged: false };
+            }
+        };
+        const moveGesture = (event: TouchEvent) => {
             if (event.cancelable) event.preventDefault();
             event.stopPropagation();
+            if (event.touches.length > 1) {
+                if (touchGesture?.mode !== "pinch") {
+                    touchGesture = { mode: "pinch", startDistance: Math.max(1, distance(event.touches[0], event.touches[1])), startZoom: zoomRef.current };
+                    suppressClickUntil.current = performance.now() + 500;
+                }
+                zoomRef.current = Math.max(MIN_GLOBE_ZOOM, Math.min(MAX_GLOBE_ZOOM, touchGesture.startZoom * distance(event.touches[0], event.touches[1]) / touchGesture.startDistance));
+                setZoom(zoomRef.current);
+                scheduleDraw();
+                return;
+            }
+            if (event.touches.length !== 1) return;
+            const touch = event.touches[0];
+            if (touchGesture?.mode === "pinch") {
+                touchGesture = { mode: "rotate", startX: touch.clientX, startY: touch.clientY, startRotation: [...rotationRef.current], lastX: touch.clientX, lastY: touch.clientY, lastAt: performance.now(), velocityX: 0, velocityY: 0, dragged: true };
+                return;
+            }
+            if (touchGesture?.mode !== "rotate") return;
+            const now = performance.now();
+            const elapsed = Math.max(1, now - touchGesture.lastAt);
+            touchGesture.velocityX = (touch.clientX - touchGesture.lastX) / elapsed;
+            touchGesture.velocityY = (touch.clientY - touchGesture.lastY) / elapsed;
+            touchGesture.lastX = touch.clientX;
+            touchGesture.lastY = touch.clientY;
+            touchGesture.lastAt = now;
+            if (Math.abs(touch.clientX - touchGesture.startX) + Math.abs(touch.clientY - touchGesture.startY) > 5) touchGesture.dragged = true;
+            const size = Math.min(element.clientWidth, element.clientHeight);
+            const degreesPerPixel = 180 / Math.max(130, size);
+            rotationRef.current = [touchGesture.startRotation[0] + (touch.clientX - touchGesture.startX) * degreesPerPixel, Math.max(-85, Math.min(85, touchGesture.startRotation[1] - (touch.clientY - touchGesture.startY) * degreesPerPixel))];
+            scheduleDraw();
+        };
+        const endGesture = (event: TouchEvent) => {
+            if (event.cancelable) event.preventDefault();
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                touchGesture = { mode: "rotate", startX: touch.clientX, startY: touch.clientY, startRotation: [...rotationRef.current], lastX: touch.clientX, lastY: touch.clientY, lastAt: performance.now(), velocityX: 0, velocityY: 0, dragged: true };
+                return;
+            }
+            if (event.touches.length > 1 || touchGesture?.mode !== "rotate") {
+                if (touchGesture?.mode === "pinch") suppressClickUntil.current = performance.now() + 450;
+                touchGesture = null;
+                return;
+            }
+            const gesture = touchGesture;
+            touchGesture = null;
+            if (gesture.dragged) suppressClickUntil.current = performance.now() + 450;
+            const coastX = Math.max(-3.5, Math.min(3.5, gesture.velocityX * .34 * 16));
+            const coastY = Math.max(-3.5, Math.min(3.5, gesture.velocityY * .34 * 16));
+            if (Math.abs(coastX) + Math.abs(coastY) <= .25) return;
+            let momentum = 1;
+            let previousFrame = performance.now();
+            const coast = (time: number) => {
+                renderFrameRef.current = 0;
+                const delta = Math.min(32, time - previousFrame);
+                previousFrame = time;
+                momentum *= Math.pow(.92, delta / 16);
+                if (momentum < .06) return;
+                rotationRef.current = [rotationRef.current[0] + coastX * momentum * delta / 16, Math.max(-85, Math.min(85, rotationRef.current[1] - coastY * momentum * delta / 16))];
+                draw();
+                renderFrameRef.current = requestAnimationFrame(coast);
+            };
+            renderFrameRef.current = requestAnimationFrame(coast);
         };
         element.addEventListener("wheel", stopPageScroll, { passive: false });
-        element.addEventListener("touchmove", stopTouchScroll, { passive: false });
+        element.addEventListener("touchstart", startGesture, { passive: false });
+        element.addEventListener("touchmove", moveGesture, { passive: false });
+        element.addEventListener("touchend", endGesture, { passive: false });
+        element.addEventListener("touchcancel", endGesture, { passive: false });
         return () => {
             element.removeEventListener("wheel", stopPageScroll);
-            element.removeEventListener("touchmove", stopTouchScroll);
+            element.removeEventListener("touchstart", startGesture);
+            element.removeEventListener("touchmove", moveGesture);
+            element.removeEventListener("touchend", endGesture);
+            element.removeEventListener("touchcancel", endGesture);
         };
-    }, [scheduleDraw]);
+    }, [draw, scheduleDraw]);
 
     const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+        if (event.pointerType === "touch") return;
         if (event.pointerType === "mouse" && event.button !== 0) return;
         event.preventDefault();
         cancelAnimationFrame(renderFrameRef.current);
@@ -298,7 +384,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
         const radius = Math.min(rect.width, rect.height) * .49;
-        const normalized = [(x - centerX) / (radius * zoomRef.current), (y - centerY) / (radius * zoomRef.current)] as [number, number];
+        const normalized = [(x - centerX) / radius, (y - centerY) / radius] as [number, number];
         if (normalized[0] ** 2 + normalized[1] ** 2 > 1) return;
         const projection = geoOrthographic().translate([centerX, centerY]).scale(radius * zoomRef.current).rotate([rotationRef.current[0], rotationRef.current[1], 0]).clipAngle(90);
         const coordinate = projection.invert?.([x, y]) as Coordinate | undefined;
