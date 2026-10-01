@@ -45,7 +45,11 @@ function AppHeader() {
     const { user } = useAuth();
     return (
         <header className="app-header">
-            <Link to="/" className="brand-link" aria-label="Atlas, accueil">
+            <Link to="/" className="brand-link" aria-label="Atlas, accueil" onClick={event => {
+                if (location.pathname !== "/" || location.hash) return;
+                event.preventDefault();
+                window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+            }}>
                 <span className="brand-mark" aria-hidden="true">
                     <img
                         className="brand-avatar"
@@ -81,6 +85,8 @@ function ScrollMotion() {
         if (location.pathname === "/" && location.hash) {
             const anchor = decodeURIComponent(location.hash.slice(1));
             requestAnimationFrame(() => document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+        } else if (!location.hash) {
+            window.scrollTo(0, 0);
         }
         const elements = Array.from(document.querySelectorAll<HTMLElement>([
             ".home-hero", ".home-section-heading", ".mode-card", ".home-extras", ".player-progress",

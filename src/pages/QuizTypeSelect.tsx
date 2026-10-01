@@ -9,7 +9,8 @@ export default function QuizTypeSelect() {
     const franceMode = params.get("france");
     const switzerlandMode = params.get("switzerland");
     const usaMode = params.get("usa");
-    const showMap = !personalQuizId && (switzerlandMode === "cantons" || usaMode === "states" || ["regions", "departments", "depts", "1"].includes(franceMode ?? ""));
+    const isWorldCapitalQuiz = !personalQuizId && !franceMode && !switzerlandMode && !usaMode && params.get("eu") !== "1" && params.get("flags") !== "1";
+    const showMap = isWorldCapitalQuiz || !personalQuizId && (switzerlandMode === "cantons" || usaMode === "states" || ["regions", "departments", "depts", "1"].includes(franceMode ?? ""));
 
     function selectType(type: AnswerMode) {
         const selectedType = type === "map" && !showMap ? "multiple" : type;

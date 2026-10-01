@@ -184,7 +184,8 @@ export default function Quiz() {
             // Mode standard via URL
             setFlagsMode(query.get("flags") === "1");
             setEuMode(query.get("eu") === "1");
-            setTypeParam(query.get("type") === "input" ? "input" : "multiple");
+            const requestedType = query.get("type");
+            setTypeParam(requestedType === "input" ? "input" : requestedType === "map" ? "map" : "multiple");
             setOnlyTerritories(query.get("only_territories") === "1");
             setShowTerritories(query.get("territories") === "1");
             setNumQuestions(Number(query.get("num") ?? 99999));
@@ -622,9 +623,35 @@ export default function Quiz() {
         ? allDepartments.filter(item => item.region === department.region).map(item => item.code)
         : department?.code;
     const hideFranceMapAnswer = customQuestions && (questionType === "fr_departement" || questionType === "fr_region");
-    const isMapMode = false;
+    const isMapMode = !customQuestions && !flagsMode && !euMode && typeParam === "map";
     const isEuropeanQuestion = customQuestions ? questionType === "annee_eu" : euMode;
     const revealedMapCode = isMapMode && showCorrection && !lastAnswerCorrect ? country?.code ?? "" : "";
+
+    if (isMapMode && country) {
+        const pickedCountry = selectedMapCode
+            ? countries.find(item => item.code.trim().padStart(3, "0") === selectedMapCode.trim().padStart(3, "0"))
+            : undefined;
+        const correctCount = answers.filter(item => item.isCorrect).length;
+        return <main className="map-guess-screen map-guess-globe-screen" onKeyDown={handleKeyDown}>
+            <div className="map-guess-heading map-guess-globe-heading">
+                <p className="section-kicker">Capitales du monde · Carte muette</p>
+                <h1>Localise ce pays sur le globe</h1>
+                <p><strong>{country.name}</strong></p>
+            </div>
+            <div className="map-guess-globe-map">
+                <CarteMonde codeISO="" selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={showCorrection ? undefined : setSelectedMapCode} large />
+            </div>
+            <div className="map-guess-controls map-guess-globe-controls">
+                <span className="map-guess-picked" aria-live="polite">{pickedCountry ? `${pickedCountry.name} sélectionné` : "Clique sur un pays du globe"}</span>
+                <button type="button" className="map-guess-clear" disabled={!selectedMapCode || showCorrection} onClick={() => setSelectedMapCode(null)}>Effacer</button>
+                {!showCorrection
+                    ? <button type="button" className="primary-btn" disabled={!selectedMapCode} onClick={handleMapSubmit}>Valider</button>
+                    : <button ref={nextButtonRef} type="button" className="primary-btn" onClick={handleNext}>{current === finishedLength - 1 ? "Voir le résultat" : "Suivant"}</button>}
+            </div>
+            {showCorrection && <p className={`quiz-correction ${lastAnswerCorrect ? "correct" : "wrong"}`} role="status">{lastAnswerCorrect ? "Bonne réponse !" : <>Ce pays est <strong>{country.name}</strong>.</>}</p>}
+            <div className="map-guess-progress">Question {current + 1} sur {finishedLength} · {correctCount} bonne{correctCount === 1 ? "" : "s"} réponse{correctCount === 1 ? "" : "s"}</div>
+        </main>;
+    }
 
     return (
         <div className={`quiz-main-wrapper ${customQuestions ? "custom-quiz-play-wrapper" : ""} ${isMapMode ? "map-guess-world-screen" : ""}`} onKeyDown={handleKeyDown}>
