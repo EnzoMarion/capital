@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { CarteFranceDept } from "../components/CarteFranceDept";
 import { supabase } from "../api/supabase";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { useQuizAttemptSave } from "../api/quizAttempts";
 import { normalizeDepartmentCode } from "../utils/franceGeography";
 

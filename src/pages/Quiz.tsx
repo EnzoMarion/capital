@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { fetchCountries } from "../api/countries";
 import type { Country } from "../api/countries";
 import { useLocation } from "react-router-dom";
@@ -11,7 +11,7 @@ import MultipleChoice, { type MultipleChoiceOption } from "../components/Multipl
 import { capitalVariantsMap } from "../utils/capitalVariants";
 import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
 import { supabase } from "../api/supabase";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { getCustomAnswerValue, getCustomQuestionMode, type CustomQuestionType } from "../utils/customQuizModes";
 import { isOverseasDepartment, normalizeDepartmentCode } from "../utils/franceGeography";
 import { SWISS_CANTONS, cantonAnswerIsCorrect, chiefTownAnswerIsCorrect, type SwissCanton } from "../utils/swissCantons";
@@ -117,7 +117,7 @@ export default function Quiz() {
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
 
-    const query = new URLSearchParams(location.search);
+    const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
     const quizId = query.get("quiz_id");
 
     const [flagsMode, setFlagsMode] = useState(false);
@@ -267,7 +267,7 @@ export default function Quiz() {
             }
         })();
         return () => { active = false; };
-    }, [location.search, quizId, user]);
+    }, [location.search, quizId, query, user]);
 
     // Pour les quiz classiques, charge les pays filtrés
     useEffect(() => {

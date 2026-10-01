@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { supabase } from "../api/supabase";
 import { useNavigate } from "react-router-dom";
 import type { Quiz } from "../api/types.ts";

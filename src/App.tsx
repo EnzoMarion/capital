@@ -18,7 +18,7 @@ import QuizFranceDepts from "./pages/QuizFranceDepts";
 import QuizFranceRegions from "./pages/QuizFranceRegions";
 import FranceQuizType from "./pages/FranceQuizType";
 import QuizSwissCantons from "./pages/QuizSwissCantons";
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const QuizFrancePhysical = lazy(() => import("./pages/QuizFrancePhysical"));

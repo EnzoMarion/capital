@@ -4,6 +4,6 @@ export type Quiz = {
     title: string;
     description: string | null;
     created_at: string;
-    settings: Record<string, any>;
+    settings: Record<string, unknown>;
     public: boolean;
 };

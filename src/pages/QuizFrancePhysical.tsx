@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { useQuizAttemptSave } from "../api/quizAttempts";
 import { CarteFrancePhysique } from "../components/CarteFrancePhysique";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";

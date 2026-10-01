@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/purge-inactive-accounts",
+      "schedule": "0 4 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

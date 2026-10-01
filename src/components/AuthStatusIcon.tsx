@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { logout } from "../api/auth";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";

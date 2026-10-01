@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { supabase } from "../api/supabase";
 import CustomQuizBuilder from "../components/CustomQuizBuilder";
 import type { CustomQuestion } from "../utils/customQuizModes";

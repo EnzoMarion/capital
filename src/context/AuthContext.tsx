@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../api/supabase";
+import { AuthContext } from "./authContextValue";
 
 export type AuthUser = {
     email: string;
@@ -11,9 +12,6 @@ function avatarUrlFromMetadata(metadata: Record<string, unknown> | undefined) {
     const value = metadata?.avatar_url ?? metadata?.picture;
     return typeof value === "string" && /^https?:\/\//i.test(value) ? value : null;
 }
-
-type AuthContextValue = { user: AuthUser; setUser: (u: AuthUser) => void; loading: boolean };
-const AuthContext = createContext<AuthContextValue>({ user: null, setUser: () => {}, loading: true });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<AuthUser>(null);
@@ -49,8 +47,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             {children}
         </AuthContext.Provider>
     );
-}
-
-export function useAuth() {
-    return useContext(AuthContext);
 }

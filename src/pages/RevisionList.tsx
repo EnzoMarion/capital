@@ -68,7 +68,7 @@ export default function RevisionList() {
 
     return (
         <div className="revision-wrapper">
-            <h2 className="revision-title">Mode Révision : par catégorie</h2>
+            <h2 className="revision-title">Mode Révision : par catégorie</h2>
             <input
                 className="revision-search"
                 placeholder="Rechercher un pays ou une capitale…"
@@ -115,11 +115,11 @@ export default function RevisionList() {
                                             <div className="revision-info">
                                                 <div className="revision-country">{country.name}</div>
                                                 <div className="revision-capital">
-                                                    <span className="label">Capitale :</span> {country.capital}
+                                                    <span className="label">Capitale :</span> {country.capital}
                                                 </div>
                                                 {country.ue_date && (
                                                     <div className="revision-ue">
-                                                        <span className="label">Année UE :</span> {country.ue_date.slice(0,4)}
+                                                        <span className="label">Année UE :</span> {country.ue_date.slice(0,4)}
                                                     </div>
                                                 )}
                                             </div>

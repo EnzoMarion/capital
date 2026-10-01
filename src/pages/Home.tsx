@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import PlayerProgress from "../components/PlayerProgress";
 import MyQuizzes from "./MyQuizzes";
 
@@ -145,7 +145,7 @@ export default function Home() {
                     {user && <button className="create-quiz-btn" onClick={() => navigate("/create-quiz")}>＋ Créer un quiz</button>}
                 </div>
                 {user ? <MyQuizzes embedded /> : !loading ? (
-                    <p className="home-connect-warning">Connecte-toi pour créer et retrouver tes quiz personnels.</p>
+                    <p className="home-connect-warning">Les quiz publics sont accessibles sans compte. Connecte-toi pour créer et retrouver tes quiz personnalisés et enregistrer ta progression. <button type="button" className="text-action" onClick={() => navigate("/login")}>Se connecter</button></p>
                 ) : null}
             </section>
         </main>
