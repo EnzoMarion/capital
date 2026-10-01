@@ -1,20 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { geoContains, geoDistance, geoOrthographic, geoPath, geoCentroid, type GeoPermissibleObjects } from "d3-geo";
+import { feature as topoFeature } from "topojson-client";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
 
-// 110m keeps path data small; dedicated clickable pins preserve tiny states.
+// The same compact 110m TopoJSON is used by the non-interactive Europe map.
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
-
-type TopoCountry = {
-    rsmKey: string;
-    id: string;
-    properties: { name: string; [key: string]: unknown };
-    geometry?: { coordinates?: unknown };
-};
 type Coordinate = [number, number];
+type WorldCountry = Feature<Geometry, { name?: string; [key: string]: unknown }>;
+type WorldTopology = { objects: { countries: object } };
 
-function GeographyReady({ geographies, onReady }: { geographies: TopoCountry[]; onReady: (items: TopoCountry[]) => void }) {
-    useEffect(() => { onReady(geographies); }, [geographies, onReady]);
-    return null;
+let worldDataPromise: Promise<WorldCountry[]> | undefined;
+function loadWorldData() {
+    worldDataPromise ??= fetch(geoUrl)
+        .then(response => {
+            if (!response.ok) throw new Error("Impossible de charger les contours des pays.");
+            return response.json() as Promise<WorldTopology>;
+        })
+        .then(topology => (topoFeature(topology as never, topology.objects.countries as never) as FeatureCollection<Geometry, { name?: string; [key: string]: unknown }>).features)
+        .catch(error => {
+            worldDataPromise = undefined;
+            throw error;
+        });
+    return worldDataPromise;
 }
 
 const SMALL_COUNTRIES: Record<string, { label: string; coordinates: Coordinate }> = {
@@ -49,24 +57,7 @@ const SMALL_COUNTRIES: Record<string, { label: string; coordinates: Coordinate }
     "670": { label: "Saint-Vincent-et-les-Grenadines", coordinates: [-61.2, 13.25] },
 };
 
-function centerOf(geometry: TopoCountry["geometry"]): Coordinate | undefined {
-    const longitudes: number[] = [];
-    const latitudes: number[] = [];
-    const visit = (value: unknown) => {
-        if (!Array.isArray(value)) return;
-        if (typeof value[0] === "number" && typeof value[1] === "number") {
-            longitudes.push(value[0]);
-            latitudes.push(value[1]);
-            return;
-        }
-        value.forEach(visit);
-    };
-    visit(geometry?.coordinates);
-    if (!longitudes.length) return undefined;
-    const radians = longitudes.map(value => value * Math.PI / 180);
-    const longitude = Math.atan2(radians.reduce((sum, value) => sum + Math.sin(value), 0), radians.reduce((sum, value) => sum + Math.cos(value), 0)) * 180 / Math.PI;
-    return [longitude, latitudes.reduce((sum, value) => sum + value, 0) / latitudes.length];
-}
+const countryCode = (country: WorldCountry) => String(country.id ?? "").padStart(3, "0");
 
 export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode, onSelect, focusCode, large = false }: {
     codeISO: string;
@@ -83,146 +74,268 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
     const pickedCode = selectedCode?.trim().padStart(3, "0");
     const focusedCode = focusCode?.trim().padStart(3, "0") ?? (codeISO ? targetCode : undefined);
     const smallTarget = focusedCode ? SMALL_COUNTRIES[focusedCode] : undefined;
-    const [geographies, setGeographies] = useState<TopoCountry[]>([]);
-    const geographiesReady = useRef(false);
-    const saveGeographies = useCallback((items: TopoCountry[]) => {
-        if (items.length > 0 && !geographiesReady.current) {
-            geographiesReady.current = true;
-            setGeographies(items);
-        }
-    }, []);
-    const center = useMemo(() => {
-        if (smallTarget) return smallTarget.coordinates;
-        const match = geographies.find(geo => geo.id === focusedCode);
-        return match ? centerOf(match.geometry) : undefined;
-    }, [focusedCode, geographies, smallTarget]);
-    const [manualRotation, setManualRotation] = useState<Coordinate | null>(null);
-    const [zoom, setZoom] = useState(1);
-    const lastPaintAt = useRef(0);
-    const coastFrame = useRef(0);
-    const globeFrame = useRef<HTMLDivElement | null>(null);
-    const rotation = manualRotation ?? (center ? [-center[0], -center[1]] as Coordinate : [0, 0]);
+    const [geographies, setGeographies] = useState<WorldCountry[]>([]);
+    const [loadError, setLoadError] = useState(false);
+    const [zoom, setZoom] = useState(smallTarget ? 1.65 : 1);
+    const frameRef = useRef<HTMLDivElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const rotationRef = useRef<Coordinate>([0, 0]);
+    const zoomRef = useRef(zoom);
+    const renderFrameRef = useRef(0);
+    const suppressClickUntil = useRef(0);
 
-    useEffect(() => () => cancelAnimationFrame(coastFrame.current), []);
+    const center = useMemo<Coordinate | undefined>(() => {
+        if (smallTarget) return smallTarget.coordinates;
+        const match = geographies.find(geo => countryCode(geo) === focusedCode);
+        return match ? geoCentroid(match) as Coordinate : undefined;
+    }, [focusedCode, geographies, smallTarget]);
+
     useEffect(() => {
-        const element = globeFrame.current;
+        let active = true;
+        loadWorldData().then(items => { if (active) setGeographies(items); }).catch(() => { if (active) setLoadError(true); });
+        return () => { active = false; };
+    }, []);
+
+    const draw = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const bounds = canvas.getBoundingClientRect();
+        const size = Math.min(bounds.width, bounds.height);
+        if (!size) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+        const pixelWidth = Math.round(bounds.width * dpr);
+        const pixelHeight = Math.round(bounds.height * dpr);
+        if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+            canvas.width = pixelWidth;
+            canvas.height = pixelHeight;
+        }
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) return;
+        context.setTransform(dpr, 0, 0, dpr, 0, 0);
+        context.clearRect(0, 0, bounds.width, bounds.height);
+        const cx = bounds.width / 2;
+        const cy = bounds.height / 2;
+        const radius = size * .49;
+        const sphere = context.createRadialGradient(cx - radius * .34, cy - radius * .42, radius * .04, cx, cy, radius);
+        sphere.addColorStop(0, "#344970");
+        sphere.addColorStop(.62, "#172545");
+        sphere.addColorStop(1, "#0b1121");
+        context.beginPath();
+        context.arc(cx, cy, radius, 0, Math.PI * 2);
+        context.fillStyle = sphere;
+        context.fill();
+        context.save();
+        context.beginPath();
+        context.arc(cx, cy, radius, 0, Math.PI * 2);
+        context.clip();
+
+        const rotation = rotationRef.current;
+        const projection = geoOrthographic()
+            .translate([cx, cy])
+            .scale(radius * zoomRef.current)
+            .rotate([rotation[0], rotation[1], 0])
+            .clipAngle(90)
+            .precision(.35);
+        const path = geoPath(projection, context);
+        for (const geo of geographies) {
+            const id = countryCode(geo);
+            const picked = id === pickedCode;
+            const answer = id === correctCode;
+            const target = id === targetCode;
+            context.beginPath();
+            path(geo as GeoPermissibleObjects);
+            context.fillStyle = picked ? "#F7C948" : answer ? "#52d49a" : target ? (onSelect ? "#52d49a" : "#F7C948") : "#bfc9df";
+            context.fill();
+            context.strokeStyle = "#465575";
+            context.lineWidth = Math.max(.45, size * .0013);
+            context.stroke();
+        }
+
+        const visibleCenter: Coordinate = [-rotation[0], -rotation[1]];
+        const markerCodes = Object.keys(SMALL_COUNTRIES).filter(code => onSelect || code === targetCode || code === correctCode || code === pickedCode);
+        for (const code of markerCodes) {
+            const item = SMALL_COUNTRIES[code];
+            if (geoDistance(visibleCenter, item.coordinates) > Math.PI / 2) continue;
+            const point = projection(item.coordinates);
+            if (!point) continue;
+            const isTarget = code === targetCode || code === focusedCode;
+            const isPicked = code === pickedCode;
+            const isAnswer = code === correctCode;
+            context.beginPath();
+            context.arc(point[0], point[1], isTarget || isPicked || isAnswer ? Math.max(6, size * .022) : Math.max(3.5, size * .01), 0, Math.PI * 2);
+            context.fillStyle = isPicked ? "#f7c948" : isAnswer ? "#52d49a" : isTarget ? "#f7c948" : "#7c6bd8";
+            context.fill();
+            context.lineWidth = Math.max(1, size * .004);
+            context.strokeStyle = "#14132a";
+            context.stroke();
+        }
+        context.restore();
+    }, [correctCode, focusedCode, geographies, onSelect, pickedCode, targetCode]);
+
+    const scheduleDraw = useCallback(() => {
+        if (renderFrameRef.current) return;
+        renderFrameRef.current = requestAnimationFrame(() => {
+            renderFrameRef.current = 0;
+            draw();
+        });
+    }, [draw]);
+
+    useEffect(() => {
+        zoomRef.current = zoom;
+        scheduleDraw();
+    }, [scheduleDraw, zoom, geographies]);
+
+    useEffect(() => {
+        rotationRef.current = center ? [-center[0], -center[1]] : [0, 0];
+        zoomRef.current = smallTarget ? 1.65 : 1;
+        setZoom(zoomRef.current);
+        scheduleDraw();
+    }, [center, focusedCode, scheduleDraw, smallTarget]);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const observer = new ResizeObserver(scheduleDraw);
+        observer.observe(canvas);
+        scheduleDraw();
+        return () => {
+            observer.disconnect();
+            cancelAnimationFrame(renderFrameRef.current);
+        };
+    }, [scheduleDraw]);
+
+    useEffect(() => {
+        const element = frameRef.current;
         if (!element) return;
         const stopPageScroll = (event: WheelEvent) => {
             event.preventDefault();
             event.stopPropagation();
-            setZoom(value => Math.max(1, Math.min(2.2, value * Math.exp(-event.deltaY * .0015))));
+            zoomRef.current = Math.max(1, Math.min(2.2, zoomRef.current * Math.exp(-event.deltaY * .0015)));
+            setZoom(zoomRef.current);
+            scheduleDraw();
+        };
+        const stopTouchScroll = (event: TouchEvent) => {
+            if (event.cancelable) event.preventDefault();
+            event.stopPropagation();
         };
         element.addEventListener("wheel", stopPageScroll, { passive: false });
-        return () => element.removeEventListener("wheel", stopPageScroll);
-    }, []);
+        element.addEventListener("touchmove", stopTouchScroll, { passive: false });
+        return () => {
+            element.removeEventListener("wheel", stopPageScroll);
+            element.removeEventListener("touchmove", stopTouchScroll);
+        };
+    }, [scheduleDraw]);
 
-    useEffect(() => {
-        setManualRotation(null);
-        setZoom(smallTarget ? 1.65 : 1);
-    }, [focusedCode, smallTarget]);
+    const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        event.preventDefault();
+        cancelAnimationFrame(renderFrameRef.current);
+        renderFrameRef.current = 0;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const startX = event.clientX;
+        const startY = event.clientY;
+        const startRotation = [...rotationRef.current] as Coordinate;
+        let lastX = startX;
+        let lastY = startY;
+        let lastAt = performance.now();
+        let velocityX = 0;
+        let velocityY = 0;
+        let dragged = false;
+        const move = (moveEvent: PointerEvent) => {
+            const now = performance.now();
+            const elapsed = Math.max(1, now - lastAt);
+            velocityX = (moveEvent.clientX - lastX) / elapsed;
+            velocityY = (moveEvent.clientY - lastY) / elapsed;
+            lastX = moveEvent.clientX;
+            lastY = moveEvent.clientY;
+            lastAt = now;
+            if (Math.abs(lastX - startX) + Math.abs(lastY - startY) > 5) dragged = true;
+            const canvas = canvasRef.current;
+            const size = canvas ? Math.min(canvas.clientWidth, canvas.clientHeight) : 350;
+            const degreesPerPixel = 180 / Math.max(130, size);
+            rotationRef.current = [startRotation[0] + (lastX - startX) * degreesPerPixel, Math.max(-85, Math.min(85, startRotation[1] + (lastY - startY) * degreesPerPixel))];
+            scheduleDraw();
+        };
+        const finish = () => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", finish);
+            window.removeEventListener("pointercancel", finish);
+            if (dragged) suppressClickUntil.current = performance.now() + 450;
+            if (!dragged) return;
+            const coastX = Math.max(-3.5, Math.min(3.5, velocityX * .34 * 16));
+            const coastY = Math.max(-3.5, Math.min(3.5, velocityY * .34 * 16));
+            let momentum = 1;
+            let previousFrame = performance.now();
+            const coast = (time: number) => {
+                renderFrameRef.current = 0;
+                const delta = Math.min(32, time - previousFrame);
+                previousFrame = time;
+                momentum *= Math.pow(.92, delta / 16);
+                if (momentum < .06) return;
+                rotationRef.current = [rotationRef.current[0] + coastX * momentum * delta / 16, Math.max(-85, Math.min(85, rotationRef.current[1] + coastY * momentum * delta / 16))];
+                draw();
+                renderFrameRef.current = requestAnimationFrame(coast);
+            };
+            if (Math.abs(coastX) + Math.abs(coastY) > .25) renderFrameRef.current = requestAnimationFrame(coast);
+        };
+        window.addEventListener("pointermove", move, { passive: true });
+        window.addEventListener("pointerup", finish, { once: true });
+        window.addEventListener("pointercancel", finish, { once: true });
+    };
+
+    const handleCanvasClick = (event: ReactMouseEvent<HTMLCanvasElement>) => {
+        if (!onSelect || performance.now() < suppressClickUntil.current) return;
+        const canvas = event.currentTarget;
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const radius = Math.min(rect.width, rect.height) * .49;
+        const normalized = [(x - centerX) / (radius * zoomRef.current), (y - centerY) / (radius * zoomRef.current)] as [number, number];
+        if (normalized[0] ** 2 + normalized[1] ** 2 > 1) return;
+        const projection = geoOrthographic().translate([centerX, centerY]).scale(radius * zoomRef.current).rotate([rotationRef.current[0], rotationRef.current[1], 0]).clipAngle(90);
+        const coordinate = projection.invert?.([x, y]) as Coordinate | undefined;
+        if (!coordinate) return;
+
+        for (const [code, item] of Object.entries(SMALL_COUNTRIES)) {
+            if (geoDistance([-rotationRef.current[0], -rotationRef.current[1]], item.coordinates) > Math.PI / 2) continue;
+            const point = projection(item.coordinates);
+            if (point && Math.hypot(point[0] - x, point[1] - y) <= Math.max(9, rect.width * .026)) {
+                onSelect(code);
+                return;
+            }
+        }
+        for (let index = geographies.length - 1; index >= 0; index -= 1) {
+            const geo = geographies[index];
+            if (geoContains(geo as never, coordinate)) {
+                onSelect(countryCode(geo));
+                return;
+            }
+        }
+    };
 
     if (europeOnly) {
         return <div className="carte-fullscreen-stack">
             <ComposableMap projection="geoMercator" projectionConfig={{ center: [18, 53], scale: 540 }} width={1000} height={650} className="carte-map europe-map">
                 <title>Carte de l’Europe</title>
                 <Geographies geography={geoUrl}>
-                    {({ geographies }: { geographies: TopoCountry[] }) => geographies.map(geo => <Geography key={geo.rsmKey} geography={geo} fill={geo.id === targetCode ? "#F7C948" : "#D9D7F7"} stroke="#fffefa" />)}
+                    {({ geographies }: { geographies: Array<{ rsmKey: string; id: string }> }) => geographies.map(geo => <Geography key={geo.rsmKey} geography={geo as never} fill={geo.id === targetCode ? "#F7C948" : "#D9D7F7"} stroke="#fffefa" />)}
                 </Geographies>
             </ComposableMap>
         </div>;
     }
 
-    const markerCodes = Object.keys(SMALL_COUNTRIES).filter(code => onSelect || code === targetCode || code === correctCode || code === pickedCode);
-    const scale = 175 * zoom;
-    return <div ref={globeFrame} className={`carte-fullscreen-stack atlas-globe-frame${onSelect ? " world-map-interactive" : ""}${large ? " atlas-globe-large" : ""}`} style={{ "--globe-zoom": zoom } as CSSProperties}>
-        <ComposableMap
-            projection="geoOrthographic"
-            projectionConfig={{ rotate: [rotation[0], rotation[1], 0], scale }}
-            width={350}
-            height={350}
+    return <div ref={frameRef} className={`carte-fullscreen-stack atlas-globe-frame${onSelect ? " world-map-interactive" : ""}${large ? " atlas-globe-large" : ""}`} style={{ "--globe-zoom": zoom } as CSSProperties}>
+        <canvas
+            ref={canvasRef}
             className="carte-map atlas-globe"
-            onPointerDown={event => {
-                const startX = event.clientX;
-                const startY = event.clientY;
-                const [startLon, startLat] = rotation;
-                let lastX = startX;
-                let lastY = startY;
-                let lastTime = performance.now();
-                let velocityX = 0;
-                let velocityY = 0;
-                lastPaintAt.current = 0;
-                cancelAnimationFrame(coastFrame.current);
-                const move = (moveEvent: PointerEvent) => {
-                    const now = performance.now();
-                    const elapsed = Math.max(1, now - lastTime);
-                    velocityX = (moveEvent.clientX - lastX) / elapsed;
-                    velocityY = (moveEvent.clientY - lastY) / elapsed;
-                    lastX = moveEvent.clientX;
-                    lastY = moveEvent.clientY;
-                    lastTime = now;
-                    if (now - lastPaintAt.current < 16) return;
-                    lastPaintAt.current = now;
-                    setManualRotation([startLon + (moveEvent.clientX - startX) * .34, Math.max(-85, Math.min(85, startLat + (moveEvent.clientY - startY) * .34))]);
-                };
-                const up = () => {
-                    window.removeEventListener("pointermove", move);
-                    window.removeEventListener("pointerup", up);
-                    const coastLon = Math.max(-3.5, Math.min(3.5, velocityX * .34 * 16));
-                    const coastLat = Math.max(-3.5, Math.min(3.5, velocityY * .34 * 16));
-                    let momentum = 1;
-                    let previousFrame = performance.now();
-                    const coast = (time: number) => {
-                        const frameTime = Math.min(32, time - previousFrame);
-                        previousFrame = time;
-                        momentum *= Math.pow(.92, frameTime / 16);
-                        if (momentum < .06) return;
-                        setManualRotation(current => {
-                            const [lon, lat] = current ?? [startLon + (lastX - startX) * .34, startLat + (lastY - startY) * .34];
-                            return [lon + coastLon * momentum * frameTime / 16, Math.max(-85, Math.min(85, lat + coastLat * momentum * frameTime / 16))];
-                        });
-                        coastFrame.current = requestAnimationFrame(coast);
-                    };
-                    if (Math.abs(coastLon) + Math.abs(coastLat) > .25) coastFrame.current = requestAnimationFrame(coast);
-                };
-                window.addEventListener("pointermove", move);
-                window.addEventListener("pointerup", up, { once: true });
-            }}
-        >
-            <title>Globe interactif : fais glisser pour tourner, utilise la molette pour zoomer</title>
-            <Geographies geography={geoUrl}>
-                {({ geographies }: { geographies: TopoCountry[] }) => {
-                    return <>
-                        <GeographyReady geographies={geographies} onReady={saveGeographies} />
-                        {geographies.map(geo => {
-                            const isTarget = Boolean(codeISO) && geo.id === targetCode;
-                            const isAnswer = Boolean(correctCode) && geo.id === correctCode;
-                            const isPicked = Boolean(pickedCode) && geo.id === pickedCode;
-                            return <Geography key={geo.rsmKey} geography={geo}
-                                onClick={onSelect ? () => onSelect(geo.id) : undefined}
-                                role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined}
-                                aria-label={onSelect ? `Choisir ${geo.properties.name}` : undefined}
-                                fill={isPicked ? "#F7C948" : isAnswer ? "#52d49a" : isTarget ? onSelect ? "#52d49a" : "#F7C948" : "#bfc9df"}
-                                stroke="#465575"
-                                style={{ default: { outline: "none", cursor: onSelect ? "pointer" : "grab", strokeWidth: isPicked ? 1.5 : .45 }, hover: { filter: "drop-shadow(0 0 5px #a995ff)" }, pressed: { outline: "none" } }}
-                            />;
-                        })}
-                        {markerCodes.map(code => {
-                            const item = SMALL_COUNTRIES[code];
-                            const isTarget = code === targetCode || code === focusedCode;
-                            const isPicked = code === pickedCode;
-                            const isAnswer = code === correctCode;
-                            return <Marker key={code} coordinates={item.coordinates}>
-                                <g role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} aria-label={onSelect ? `Choisir ${item.label}` : undefined}
-                                    onClick={onSelect ? () => onSelect(code) : undefined}
-                                    onKeyDown={onSelect ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(code); } } : undefined}
-                                    style={{ cursor: onSelect ? "pointer" : "default" }}>
-                                    <circle r={isTarget || isPicked || isAnswer ? 8 : 3.5} fill={isPicked ? "#f7c948" : isAnswer ? "#52d49a" : isTarget ? "#f7c948" : "#7c6bd8"} stroke="#14132a" strokeWidth="1.5" />
-                                </g>
-                            </Marker>;
-                        })}
-                    </>;
-                }}
-            </Geographies>
-        </ComposableMap>
+            role="application"
+            tabIndex={0}
+            aria-label={onSelect ? "Globe interactif. Fais glisser pour tourner, touche un pays pour le sélectionner, ou utilise la molette pour zoomer." : "Globe terrestre interactif. Fais glisser pour tourner et utilise la molette pour zoomer."}
+            onPointerDown={handlePointerDown}
+            onClick={handleCanvasClick}
+        />
+        {loadError && <span className="globe-load-error" role="status">La carte n’a pas pu être chargée.</span>}
     </div>;
 }
