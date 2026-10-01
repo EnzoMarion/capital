@@ -1,31 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { geoContains, geoDistance, geoOrthographic, geoPath, geoCentroid, type GeoPermissibleObjects } from "d3-geo";
-import { feature as topoFeature } from "topojson-client";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
+import bundledCountries from "react-svg-worldmap/dist/countries.geo.js";
+import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
 
-// The same compact 110m TopoJSON is used by the non-interactive Europe map.
-const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
 const MIN_GLOBE_ZOOM = .65;
 const MAX_GLOBE_ZOOM = 5.2;
 type Coordinate = [number, number];
 type WorldCountry = Feature<Geometry, { name?: string; [key: string]: unknown }>;
-type WorldTopology = { objects: { countries: object } };
-
-let worldDataPromise: Promise<WorldCountry[]> | undefined;
-function loadWorldData() {
-    worldDataPromise ??= fetch(geoUrl)
-        .then(response => {
-            if (!response.ok) throw new Error("Impossible de charger les contours des pays.");
-            return response.json() as Promise<WorldTopology>;
-        })
-        .then(topology => (topoFeature(topology as never, topology.objects.countries as never) as FeatureCollection<Geometry, { name?: string; [key: string]: unknown }>).features)
-        .catch(error => {
-            worldDataPromise = undefined;
-            throw error;
-        });
-    return worldDataPromise;
-}
+type BundledCountry = { N: string; I: string; C: number[][][][] };
+const alpha2ToNumeric = new Map(Object.entries(isoNumToAlpha2).map(([numeric, alpha2]) => [alpha2, numeric]));
+const worldGeographies: WorldCountry[] = (bundledCountries.features as BundledCountry[]).flatMap(country => {
+    const id = alpha2ToNumeric.get(country.I);
+    if (!id) return [];
+    return [{
+        type: "Feature",
+        id,
+        properties: { name: country.N },
+        geometry: { type: "MultiPolygon", coordinates: country.C } as Geometry,
+    }];
+});
+const worldGeoCollection: FeatureCollection<Geometry, { name?: string; [key: string]: unknown }> = {
+    type: "FeatureCollection",
+    features: worldGeographies,
+};
 
 const SMALL_COUNTRIES: Record<string, { label: string; coordinates: Coordinate }> = {
     "020": { label: "Andorre", coordinates: [1.58, 42.55] },
@@ -76,8 +75,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
     const pickedCode = selectedCode?.trim().padStart(3, "0");
     const focusedCode = focusCode?.trim().padStart(3, "0") ?? (codeISO ? targetCode : undefined);
     const smallTarget = focusedCode ? SMALL_COUNTRIES[focusedCode] : undefined;
-    const [geographies, setGeographies] = useState<WorldCountry[]>([]);
-    const [loadError, setLoadError] = useState(false);
+    const [geographies] = useState<WorldCountry[]>(worldGeographies);
     const [zoom, setZoom] = useState(smallTarget ? 1.65 : 1);
     const frameRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -93,12 +91,6 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         return match ? geoCentroid(match) as Coordinate : undefined;
     }, [focusedCode, geographies, smallTarget]);
     const focusKey = `${focusedCode ?? ""}:${center?.[0] ?? ""}:${center?.[1] ?? ""}`;
-
-    useEffect(() => {
-        let active = true;
-        loadWorldData().then(items => { if (active) setGeographies(items); }).catch(() => { if (active) setLoadError(true); });
-        return () => { active = false; };
-    }, []);
 
     const draw = useCallback(() => {
         const canvas = canvasRef.current;
@@ -179,18 +171,24 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         context.restore();
     }, [correctCode, focusedCode, geographies, onSelect, pickedCode, targetCode]);
 
+    // A queued animation frame must always use the latest country data. Without
+    // this ref, the first frame can capture the empty list before fetch resolves
+    // and leave the globe blank until the next pointer gesture.
+    const drawRef = useRef(draw);
+    drawRef.current = draw;
+
     const scheduleDraw = useCallback(() => {
         if (renderFrameRef.current) return;
         renderFrameRef.current = requestAnimationFrame(() => {
             renderFrameRef.current = 0;
-            draw();
+            drawRef.current();
         });
-    }, [draw]);
+    }, []);
 
     useEffect(() => {
         zoomRef.current = zoom;
         scheduleDraw();
-    }, [scheduleDraw, zoom, geographies]);
+    }, [draw, scheduleDraw, zoom, geographies]);
 
     useEffect(() => {
         if (previousFocusKey.current === focusKey) return;
@@ -411,7 +409,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         return <div className="carte-fullscreen-stack">
             <ComposableMap projection="geoMercator" projectionConfig={{ center: [18, 53], scale: 540 }} width={1000} height={650} className="carte-map europe-map">
                 <title>Carte de l’Europe</title>
-                <Geographies geography={geoUrl}>
+                <Geographies geography={worldGeoCollection}>
                     {({ geographies }: { geographies: Array<{ rsmKey: string; id: string }> }) => geographies.map(geo => <Geography key={geo.rsmKey} geography={geo as never} fill={geo.id === targetCode ? "#F7C948" : "#D9D7F7"} stroke="#fffefa" />)}
                 </Geographies>
             </ComposableMap>
@@ -428,6 +426,5 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             onPointerDown={handlePointerDown}
             onClick={handleCanvasClick}
         />
-        {loadError && <span className="globe-load-error" role="status">La carte n’a pas pu être chargée.</span>}
     </div>;
 }
