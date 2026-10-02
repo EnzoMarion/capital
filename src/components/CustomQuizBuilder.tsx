@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchCountries, type Country } from "../api/countries";
-import { supabase } from "../api/supabase";
+import { fetchFranceDepartments } from "../api/franceDepartments";
 import {
     COUNTRY_QUESTION_MODES,
     FRANCE_QUESTION_MODES,
@@ -49,13 +49,15 @@ export default function CustomQuizBuilder({
         void (async () => {
             const [countryResult, departmentResult] = await Promise.all([
                 fetchCountries().then(data => ({ data, error: null as string | null })).catch(() => ({ data: [] as Country[], error: "Les pays n’ont pas pu être chargés." })),
-                supabase.from("fr_departements").select("code, nom, cheflieu, region").order("code"),
+                fetchFranceDepartments()
+                    .then(data => ({ data, error: null as string | null }))
+                    .catch(() => ({ data: [] as Department[], error: "Les départements français n’ont pas pu être chargés. Les questions monde restent disponibles." })),
             ]);
             if (!active) return;
             setCountries(countryResult.data);
-            if (departmentResult.error) setSourceError("Les départements français n’ont pas pu être chargés. Les questions monde restent disponibles.");
-            else setDepartments((departmentResult.data ?? []) as Department[]);
+            setDepartments(departmentResult.data as Department[]);
             if (countryResult.error) setSourceError(countryResult.error);
+            else if (departmentResult.error) setSourceError(departmentResult.error);
             setLoading(false);
         })().catch(() => {
             if (active) { setSourceError("Les questions disponibles n’ont pas pu être chargées."); setLoading(false); }

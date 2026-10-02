@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { supabase } from "../api/supabase";
+import { fetchFranceDepartments } from "../api/franceDepartments";
 import { CarteFranceDept } from "../components/CarteFranceDept";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
 import { useAuth } from "../context/useAuth";
@@ -45,25 +45,22 @@ export default function QuizFranceRegions() {
     useEffect(() => {
         let active = true;
         void (async () => {
-            const { data, error: queryError } = await supabase.from("fr_departements").select("id, code, nom, region");
+            const data = await fetchFranceDepartments();
             if (!active) return;
-            if (queryError) setError("Les données des régions françaises n’ont pas pu être chargées.");
-            else {
-                const rows = ((data ?? []) as Department[]).filter(item => item.code && item.nom && item.region);
-                setDepartments(rows);
-                const byRegion = new Map<string, Set<string>>();
-                rows.forEach(item => {
-                    const codes = byRegion.get(item.region!) ?? new Set<string>();
-                    codes.add(item.code);
-                    byRegion.set(item.region!, codes);
-                });
-                const uniqueRegions = [...byRegion.entries()]
-                    .map(([name, codes]) => ({ name, departmentCodes: [...codes] }))
-                    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
-                if (!uniqueRegions.length) setError("Aucune région n’est renseignée dans les données françaises.");
-                setRegions(uniqueRegions);
-                setOrder(shuffle(uniqueRegions.map((_, index) => index)));
-            }
+            const rows = (data as Department[]).filter(item => item.code && item.nom && item.region);
+            setDepartments(rows);
+            const byRegion = new Map<string, Set<string>>();
+            rows.forEach(item => {
+                const codes = byRegion.get(item.region!) ?? new Set<string>();
+                codes.add(item.code);
+                byRegion.set(item.region!, codes);
+            });
+            const uniqueRegions = [...byRegion.entries()]
+                .map(([name, codes]) => ({ name, departmentCodes: [...codes] }))
+                .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+            if (!uniqueRegions.length) setError("Aucune région n’est renseignée dans les données françaises.");
+            setRegions(uniqueRegions);
+            setOrder(shuffle(uniqueRegions.map((_, index) => index)));
             setLoading(false);
         })().catch(() => {
             if (active) { setError("Connexion impossible aux données françaises."); setLoading(false); }

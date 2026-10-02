@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { supabase } from "../api/supabase";
+import { fetchFranceDepartments } from "../api/franceDepartments";
 import type { FrancePhysicalFeature } from "../utils/francePhysicalGeography";
 
 const CarteFrancePhysique = lazy(() => import("../components/CarteFrancePhysique").then(module => ({ default: module.CarteFrancePhysique })));
@@ -34,10 +34,9 @@ export default function RevisionFrance() {
         let active = true;
         void (async () => {
             try {
-                const { data, error: queryError } = await supabase.from("fr_departements").select("code, nom, cheflieu, region").order("code");
+                const data = await fetchFranceDepartments();
                 if (!active) return;
-                if (queryError) setError("Les fiches France n’ont pas pu être chargées.");
-                else setDepartments(((data ?? []) as Department[]).sort((a, b) =>
+                setDepartments((data as Department[]).sort((a, b) =>
                     departmentRank(a.code) - departmentRank(b.code) || a.code.localeCompare(b.code, "fr")
                 ));
                 setLoading(false);

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { fetchCountries } from "../api/countries";
+import { fetchFranceDepartments } from "../api/franceDepartments";
 import type { Country } from "../api/countries";
 import { useLocation } from "react-router-dom";
 import { CarteMonde } from "../components/CarteMonde";
@@ -241,10 +242,9 @@ export default function Quiz() {
                             setAllCountries(pays);
                         }
                         if (needsFrance) {
-                            const { data: franceData, error: franceError } = await supabase.from("fr_departements").select("code, nom, cheflieu, region");
+                            const franceData = await fetchFranceDepartments();
                             if (!active) return;
-                            if (franceError) throw franceError;
-                            setAllDepartments((franceData ?? []) as FranceDepartment[]);
+                            setAllDepartments(franceData);
                         }
                         setQuizLoaded(true);
                         setCountriesLoading(false);

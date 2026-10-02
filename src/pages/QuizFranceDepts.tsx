@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CarteFranceDept } from "../components/CarteFranceDept";
-import { supabase } from "../api/supabase";
+import { fetchFranceDepartments } from "../api/franceDepartments";
 import FranceQuizResult, { type FranceAnswer } from "./FranceQuizResult";
 import { useAuth } from "../context/useAuth";
 import { useQuizAttemptSave } from "../api/quizAttempts";
@@ -45,10 +45,9 @@ export default function QuizFranceDepts() {
     useEffect(() => {
         let active = true;
         void (async () => {
-            const { data, error: queryError } = await supabase.from("fr_departements").select("id, code, nom, cheflieu, region");
+            const data = await fetchFranceDepartments();
             if (!active) return;
-            if (queryError) setError("Les données des départements français n’ont pas pu être chargées.");
-            else if (!data?.length) setError("Aucun département n’est disponible.");
+            if (!data.length) setError("Aucun département n’est disponible.");
             else {
                 const rows = data as Department[];
                 setDepartments(rows);
