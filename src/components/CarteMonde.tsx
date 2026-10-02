@@ -233,11 +233,27 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const observer = new ResizeObserver(scheduleDraw);
+        let initialFrame = 0;
+        let layoutAttempts = 0;
+        const drawWhenLaidOut = () => {
+            const bounds = canvas.getBoundingClientRect();
+            if (bounds.width > 0 && bounds.height > 0) {
+                drawRef.current();
+                return;
+            }
+            if (layoutAttempts++ < 12) initialFrame = requestAnimationFrame(drawWhenLaidOut);
+        };
+        const observer = new ResizeObserver(() => {
+            const bounds = canvas.getBoundingClientRect();
+            if (bounds.width > 0 && bounds.height > 0) scheduleDraw();
+        });
+        if (frameRef.current) observer.observe(frameRef.current);
         observer.observe(canvas);
+        initialFrame = requestAnimationFrame(drawWhenLaidOut);
         scheduleDraw();
         return () => {
             observer.disconnect();
+            cancelAnimationFrame(initialFrame);
             cancelAnimationFrame(renderFrameRef.current);
         };
     }, [scheduleDraw]);

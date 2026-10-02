@@ -209,8 +209,10 @@ input:focus, select:focus { border-color: #9290e3; outline: 3px solid rgba(100,1
 .quiz-map-wrapper { overflow: hidden; margin-bottom: 14px; padding: 8px; border: 1px solid #dfdef3; border-radius: 18px; background: #f0efff; }
 .quiz-map-wrapper:has(.atlas-globe-frame) { overflow: visible; padding: 0; border: 0; background: transparent; box-shadow: none; }
 .atlas-globe-frame { position: relative; isolation: isolate; display: grid; place-items: center; width: min(100%, 350px); aspect-ratio: 1; margin-inline: auto; overflow: hidden; border-radius: 50%; background: transparent; touch-action: none; overscroll-behavior: contain; }
+/* The globe is painted once by its canvas; suppress any stale/legacy CSS halo. */
+.atlas-globe-frame::before, .atlas-globe-frame::after { display: none !important; content: none !important; }
 .quiz-map-wrapper .atlas-globe-frame { width: min(100%, 350px); }
-.quiz-map-wrapper .atlas-globe, .map-guess-globe-map .atlas-globe { display: block; width: 100% !important; height: 100% !important; max-height: none !important; overflow: visible; clip-path: circle(50% at 50% 50%); shape-rendering: optimizeSpeed; touch-action: none; cursor: grab; }
+.quiz-map-wrapper .atlas-globe, .map-guess-globe-map .atlas-globe { display: block; width: 100% !important; height: 100% !important; max-height: none !important; overflow: visible; background: transparent !important; clip-path: circle(50% at 50% 50%); shape-rendering: optimizeSpeed; touch-action: none; cursor: grab; }
 .atlas-globe:active { cursor: grabbing; }
 .atlas-globe:focus-visible { outline: none !important; }
 .atlas-globe path { transition: fill .2s ease, filter .2s ease; }
