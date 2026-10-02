@@ -11,6 +11,10 @@ type Coordinate = [number, number];
 type WorldCountry = Feature<Geometry, { name?: string; [key: string]: unknown }>;
 type BundledCountry = { N: string; I: string; C: number[][][][] };
 const alpha2ToNumeric = new Map(Object.entries(isoNumToAlpha2).map(([numeric, alpha2]) => [alpha2, numeric]));
+// Atlas splits the Dutch Caribbean into separate records with its own numeric IDs.
+alpha2ToNumeric.set("CW", "530");
+alpha2ToNumeric.set("SX", "531");
+alpha2ToNumeric.set("BQ", "532");
 const worldGeographies: WorldCountry[] = (bundledCountries.features as BundledCountry[]).flatMap(country => {
     const id = alpha2ToNumeric.get(country.I);
     if (!id) return [];
@@ -27,7 +31,37 @@ const worldGeoCollection: FeatureCollection<Geometry, { name?: string; [key: str
 };
 
 const SMALL_COUNTRIES: Record<string, { label: string; coordinates: Coordinate }> = {
+    "010": { label: "Antarctique", coordinates: [0, -82] },
+    "016": { label: "Samoa américaines", coordinates: [-170.70, -14.27] },
     "020": { label: "Andorre", coordinates: [1.58, 42.55] },
+    "048": { label: "Bahreïn", coordinates: [50.59, 26.22] },
+    "052": { label: "Barbade", coordinates: [-59.62, 13.10] },
+    "060": { label: "Bermudes", coordinates: [-64.78, 32.29] },
+    "074": { label: "Île Bouvet", coordinates: [3.36, -54.42] },
+    "086": { label: "Territoire britannique de l'océan Indien", coordinates: [72.42, -7.31] },
+    "092": { label: "Îles Vierges britanniques", coordinates: [-64.62, 18.42] },
+    "132": { label: "Cap-Vert", coordinates: [-23.51, 14.92] },
+    "136": { label: "Îles Caïmans", coordinates: [-81.38, 19.29] },
+    "162": { label: "Île Christmas", coordinates: [105.67, -10.42] },
+    "166": { label: "Îles Cocos", coordinates: [96.83, -12.19] },
+    "174": { label: "Comores", coordinates: [43.25, -11.70] },
+    "175": { label: "Mayotte", coordinates: [45.23, -12.78] },
+    "184": { label: "Îles Cook", coordinates: [-159.78, -21.21] },
+    "212": { label: "Dominique", coordinates: [-61.39, 15.30] },
+    "238": { label: "Îles Malouines", coordinates: [-57.85, -51.70] },
+    "234": { label: "Îles Féroé", coordinates: [-6.77, 62.01] },
+    "239": { label: "Géorgie du Sud", coordinates: [-36.50, -54.28] },
+    "248": { label: "Îles Åland", coordinates: [19.93, 60.10] },
+    "254": { label: "Guyane française", coordinates: [-52.33, 4.93] },
+    "258": { label: "Polynésie française", coordinates: [-149.57, -17.53] },
+    "260": { label: "Terres australes françaises", coordinates: [70.22, -49.35] },
+    "292": { label: "Gibraltar", coordinates: [-5.35, 36.14] },
+    "296": { label: "Kiribati", coordinates: [173.00, 1.45] },
+    "304": { label: "Groenland", coordinates: [-51.72, 64.18] },
+    "308": { label: "Grenade", coordinates: [-61.75, 12.05] },
+    "312": { label: "Guadeloupe", coordinates: [-61.73, 15.99] },
+    "316": { label: "Guam", coordinates: [144.79, 13.47] },
+    "334": { label: "Îles Heard-et-MacDonald", coordinates: [73.51, -53.10] },
     "674": { label: "Saint-Marin", coordinates: [12.46, 43.94] },
     "492": { label: "Monaco", coordinates: [7.42, 43.74] },
     "438": { label: "Liechtenstein", coordinates: [9.55, 47.14] },
@@ -35,38 +69,70 @@ const SMALL_COUNTRIES: Record<string, { label: string; coordinates: Coordinate }
     "442": { label: "Luxembourg", coordinates: [6.13, 49.8] },
     "470": { label: "Malte", coordinates: [14.4, 35.9] },
     "702": { label: "Singapour", coordinates: [103.82, 1.35] },
-    "048": { label: "Bahreïn", coordinates: [50.55, 26.07] },
-    "462": { label: "Maldives", coordinates: [73.22, 3.2] },
+    "344": { label: "Hong Kong", coordinates: [114.17, 22.30] },
+    "446": { label: "Macao", coordinates: [113.54, 22.20] },
+    "462": { label: "Maldives", coordinates: [73.51, 4.17] },
+    "474": { label: "Martinique", coordinates: [-61.06, 14.61] },
+    "500": { label: "Montserrat", coordinates: [-62.21, 16.71] },
+    "530": { label: "Curaçao", coordinates: [-68.93, 12.11] },
+    "531": { label: "Sint Maarten", coordinates: [-63.05, 18.02] },
+    "532": { label: "Bonaire", coordinates: [-68.27, 12.15] },
+    "533": { label: "Aruba", coordinates: [-70.03, 12.52] },
+    "534": { label: "Saba", coordinates: [-63.24, 17.63] },
+    "535": { label: "Saint-Eustache", coordinates: [-62.98, 17.49] },
+    "540": { label: "Nouvelle-Calédonie", coordinates: [166.45, -22.27] },
+    "570": { label: "Niue", coordinates: [-169.92, -19.05] },
+    "574": { label: "Île Norfolk", coordinates: [167.97, -29.05] },
+    "580": { label: "Îles Mariannes du Nord", coordinates: [145.75, 15.19] },
+    "581": { label: "Îles mineures éloignées des États-Unis", coordinates: [-162.10, 5.88] },
+    "638": { label: "La Réunion", coordinates: [55.45, -20.87] },
+    "652": { label: "Saint-Barthélemy", coordinates: [-62.85, 17.90] },
+    "654": { label: "Sainte-Hélène", coordinates: [-5.72, -15.94] },
+    "660": { label: "Anguilla", coordinates: [-63.06, 18.22] },
+    "662": { label: "Sainte-Lucie", coordinates: [-60.98, 14.01] },
+    "663": { label: "Saint-Martin", coordinates: [-63.08, 18.07] },
+    "666": { label: "Saint-Pierre-et-Miquelon", coordinates: [-56.18, 46.78] },
+    "678": { label: "Sao Tomé-et-Principe", coordinates: [6.73, 0.34] },
+    "744": { label: "Svalbard", coordinates: [15.63, 78.22] },
+    "772": { label: "Tokelau", coordinates: [-171.85, -9.38] },
+    "796": { label: "Îles Turques-et-Caïques", coordinates: [-71.14, 21.46] },
+    "831": { label: "Guernesey", coordinates: [-2.54, 49.45] },
+    "832": { label: "Jersey", coordinates: [-2.10, 49.19] },
+    "833": { label: "Île de Man", coordinates: [-4.48, 54.15] },
+    "850": { label: "Îles Vierges américaines", coordinates: [-64.93, 18.34] },
+    "876": { label: "Wallis-et-Futuna", coordinates: [-176.18, -13.28] },
     "690": { label: "Seychelles", coordinates: [55.45, -4.62] },
     "480": { label: "Maurice", coordinates: [57.55, -20.2] },
-    "174": { label: "Comores", coordinates: [43.33, -11.65] },
     "520": { label: "Nauru", coordinates: [166.93, -0.52] },
     "798": { label: "Tuvalu", coordinates: [179.2, -8.52] },
     "585": { label: "Palaos", coordinates: [134.58, 7.5] },
-    "296": { label: "Kiribati", coordinates: [-157.36, 1.87] },
+    "612": { label: "Pitcairn", coordinates: [-130.10, -25.07] },
+    "630": { label: "Porto Rico", coordinates: [-66.10, 18.47] },
     "584": { label: "Îles Marshall", coordinates: [171.18, 7.1] },
     "583": { label: "Micronésie", coordinates: [158.2, 6.9] },
     "776": { label: "Tonga", coordinates: [-175.2, -21.18] },
     "882": { label: "Samoa", coordinates: [-172.1, -13.76] },
     "028": { label: "Antigua-et-Barbuda", coordinates: [-61.8, 17.06] },
     "044": { label: "Bahamas", coordinates: [-77.4, 25.03] },
-    "052": { label: "Barbade", coordinates: [-59.55, 13.19] },
-    "212": { label: "Dominique", coordinates: [-61.37, 15.41] },
-    "308": { label: "Grenade", coordinates: [-61.68, 12.12] },
     "659": { label: "Saint-Christophe-et-Niévès", coordinates: [-62.73, 17.34] },
-    "662": { label: "Sainte-Lucie", coordinates: [-60.98, 13.91] },
     "670": { label: "Saint-Vincent-et-les-Grenadines", coordinates: [-61.2, 13.25] },
+    "732": { label: "Sahara occidental", coordinates: [-13.20, 27.15] },
+    "827": { label: "Pays de Galles", coordinates: [-3.18, 51.48] },
+    "828": { label: "Irlande du Nord", coordinates: [-5.93, 54.60] },
+    "900": { label: "Écosse", coordinates: [-3.19, 55.95] },
 };
 
 const countryCode = (country: WorldCountry) => String(country.id ?? "").padStart(3, "0");
 
-export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode, onSelect, focusCode, large = false }: {
+export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode, onSelect, focusCode, availableCodes, showLocationMarkers = false, large = false }: {
     codeISO: string;
     region?: "world" | "europe";
     selectedCode?: string | null;
     answerCode?: string;
     onSelect?: (code: string) => void;
     focusCode?: string;
+    availableCodes?: string[];
+    showLocationMarkers?: boolean;
     large?: boolean;
 }) {
     const europeOnly = region === "europe";
@@ -76,6 +142,9 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
     const focusedCode = focusCode?.trim().padStart(3, "0") ?? (codeISO ? targetCode : undefined);
     const smallTarget = focusedCode ? SMALL_COUNTRIES[focusedCode] : undefined;
     const [geographies] = useState<WorldCountry[]>(worldGeographies);
+    const selectableCodes = useMemo(() => availableCodes
+        ? new Set(availableCodes.map(code => code.trim().padStart(3, "0")))
+        : null, [availableCodes]);
     const [zoom, setZoom] = useState(smallTarget ? 1.65 : 1);
     const frameRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -139,9 +208,10 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             const picked = id === pickedCode;
             const answer = id === correctCode;
             const target = id === targetCode;
+            const isSelectable = !selectableCodes || selectableCodes.has(id);
             context.beginPath();
             path(geo as GeoPermissibleObjects);
-            context.fillStyle = picked ? "#F7C948" : answer ? "#52d49a" : target ? (onSelect ? "#52d49a" : "#F7C948") : "#bfc9df";
+            context.fillStyle = picked ? "#F7C948" : answer ? "#52d49a" : target ? (onSelect ? "#52d49a" : "#F7C948") : isSelectable ? "#bfc9df" : "#8792aa";
             context.fill();
             context.strokeStyle = "#465575";
             context.lineWidth = Math.max(.45, size * .0013);
@@ -149,7 +219,11 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         }
 
         const visibleCenter: Coordinate = [-rotation[0], -rotation[1]];
-        const markerCodes = Object.keys(SMALL_COUNTRIES).filter(code => onSelect || code === targetCode || code === correctCode || code === pickedCode);
+        const showAllMarkers = Boolean(onSelect || showLocationMarkers);
+        const markerCodes = Object.keys(SMALL_COUNTRIES).filter(code =>
+            (!showAllMarkers || !selectableCodes || selectableCodes.has(code))
+            && (showAllMarkers || code === targetCode || code === correctCode || code === pickedCode),
+        );
         for (const code of markerCodes) {
             const item = SMALL_COUNTRIES[code];
             if (geoDistance(visibleCenter, item.coordinates) > Math.PI / 2) continue;
@@ -167,7 +241,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             context.stroke();
         }
         context.restore();
-    }, [correctCode, focusedCode, geographies, onSelect, pickedCode, targetCode]);
+    }, [correctCode, focusedCode, geographies, onSelect, pickedCode, selectableCodes, showLocationMarkers, targetCode]);
 
     // A queued animation frame must always use the latest country data. Without
     // this ref, the first frame can capture the empty list before fetch resolves
@@ -213,22 +287,28 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         const coordinate = projection.invert?.([x, y]) as Coordinate | undefined;
         if (!coordinate) return;
 
+        let nearestMarker: { code: string; distance: number } | undefined;
         for (const [code, item] of Object.entries(SMALL_COUNTRIES)) {
+            if (selectableCodes && !selectableCodes.has(code)) continue;
             if (geoDistance([-rotationRef.current[0], -rotationRef.current[1]], item.coordinates) > Math.PI / 2) continue;
             const point = projection(item.coordinates);
-            if (point && Math.hypot(point[0] - x, point[1] - y) <= Math.max(9, rect.width * .026)) {
+            if (!point) continue;
+            const markerDistance = Math.hypot(point[0] - x, point[1] - y);
+            if (markerDistance <= Math.max(9, rect.width * .026) && (!nearestMarker || markerDistance < nearestMarker.distance)) nearestMarker = { code, distance: markerDistance };
+        }
+        if (nearestMarker) {
+            onSelect(nearestMarker.code);
+            return;
+        }
+        for (let index = geographies.length - 1; index >= 0; index -= 1) {
+            const geo = geographies[index];
+            const code = countryCode(geo);
+            if (geoContains(geo as never, coordinate) && (!selectableCodes || selectableCodes.has(code))) {
                 onSelect(code);
                 return;
             }
         }
-        for (let index = geographies.length - 1; index >= 0; index -= 1) {
-            const geo = geographies[index];
-            if (geoContains(geo as never, coordinate)) {
-                onSelect(countryCode(geo));
-                return;
-            }
-        }
-    }, [geographies, onSelect]);
+    }, [geographies, onSelect, selectableCodes]);
 
     useEffect(() => {
         const canvas = canvasRef.current;

@@ -117,6 +117,7 @@ export default function Quiz() {
     const { user } = useAuth();
     const nextButtonRef = useRef<HTMLButtonElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const availableCountryCodes = useMemo(() => countries.map(country => String(country.code).trim().padStart(3, "0")), [countries]);
 
     const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
     const quizId = query.get("quiz_id");
@@ -661,7 +662,7 @@ export default function Quiz() {
                 <p><strong>{country.name}</strong></p>
             </div>
             <div className="map-guess-globe-map">
-                <CarteMonde codeISO="" selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={showCorrection ? undefined : setSelectedMapCode} large />
+                <CarteMonde codeISO="" selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={showCorrection ? undefined : setSelectedMapCode} availableCodes={availableCountryCodes} large />
             </div>
             <div className="map-guess-controls map-guess-globe-controls">
                 <span className="map-guess-picked" aria-live="polite">{pickedCountry ? `${pickedCountry.name} sélectionné` : "Clique sur un pays du globe"}</span>
@@ -709,7 +710,7 @@ export default function Quiz() {
                 )}
                 {country && !isEuropeanQuestion && (isMapMode || ((customQuestions && questionType === "capitale") || (!customQuestions && !euMode && !flagsMode))) && (
                     <div className={`quiz-map-wrapper ${customQuestions ? "custom-quiz-map-panel france-map-panel" : ""}`}>
-                        <CarteMonde codeISO={isMapMode ? "" : country.code} selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={isMapMode && !showCorrection ? setSelectedMapCode : undefined} focusCode={isMapMode ? country.code : undefined} />
+                        <CarteMonde codeISO={isMapMode ? "" : country.code} selectedCode={selectedMapCode} answerCode={revealedMapCode} onSelect={isMapMode && !showCorrection ? setSelectedMapCode : undefined} focusCode={isMapMode ? country.code : undefined} availableCodes={availableCountryCodes} showLocationMarkers={!customQuestions && !euMode && !flagsMode} />
                     </div>
                 )}
                 <form
