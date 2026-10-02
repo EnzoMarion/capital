@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchCountries, type Country } from "../api/countries";
 import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
+import { getCountryNameVariants, normalizeCountryName } from "../utils/countryNames";
 
 const CATEGORIES = [
     { label: "Europe", value: "Europe" },
@@ -60,7 +61,7 @@ export default function RevisionList() {
         setOpen(o => ({ ...o, [cat]: !o[cat] }));
     }
 
-    const normalizedSearch = search.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR");
+    const normalizedSearch = normalizeCountryName(search);
 
     if (loading) return <p className="loading-state">Chargement des fiches de révision…</p>;
     if (error) return <p className="empty-state error" role="alert">{error}</p>;
@@ -78,8 +79,8 @@ export default function RevisionList() {
             />
             {CATEGORIES.map(cat => {
                 const countriesInCat = (filteredByCat[cat.label] || []).filter(c =>
-                    c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").includes(normalizedSearch) ||
-                    (c.capital && c.capital.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").includes(normalizedSearch))
+                    getCountryNameVariants(c).some(name => normalizeCountryName(name).includes(normalizedSearch)) ||
+                    (c.capital && normalizeCountryName(c.capital).includes(normalizedSearch))
                 );
                 if (countriesInCat.length === 0) return null;
                 return (

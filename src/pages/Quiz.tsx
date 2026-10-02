@@ -10,6 +10,7 @@ import { CarteEtatsUnis } from "../components/CarteEtatsUnis";
 import { SwissCantonFlag, USStateFlag } from "../components/TerritoryFlag";
 import MultipleChoice, { type MultipleChoiceOption } from "../components/MultipleChoice";
 import { capitalVariantsMap } from "../utils/capitalVariants";
+import { getCountryNameVariants, normalizeCountryName } from "../utils/countryNames";
 import { isoNumToAlpha2 } from "../utils/isoNumToAlpha2";
 import { supabase } from "../api/supabase";
 import { useAuth } from "../context/useAuth";
@@ -49,7 +50,8 @@ function answerYearOk(userInput: string, country: Country) {
     return clean(userInput) === clean(expect);
 }
 function answerCountryOk(userInput: string, country: Country) {
-    return clean(userInput) === clean(country.name);
+    const answer = normalizeCountryName(userInput);
+    return getCountryNameVariants(country).some(name => normalizeCountryName(name) === answer);
 }
 type Answer = {
     country?: Country;
@@ -446,7 +448,11 @@ export default function Quiz() {
         const country = allCountries.find(item => item.code === question.country_code);
         if (!country) return;
         const expected = customAnswerValue(question.question_type, country);
-        const correct = question.question_type === "capitale" ? answerOk(value, country) : clean(value) === clean(expected);
+        const correct = question.question_type === "capitale"
+            ? answerOk(value, country)
+            : question.question_type === "drapeau"
+                ? answerCountryOk(value, country)
+                : clean(value) === clean(expected);
         setAnswers(previous => [...previous, { country, user: value, isCorrect: correct, questionType: question.question_type }]);
         setLastAnswerCorrect(correct);
         if (correct) setScore(previous => previous + 1);
