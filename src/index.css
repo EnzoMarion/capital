@@ -507,6 +507,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   margin-top: 12px; padding: 7px 12px; border: 1px solid rgba(183, 165, 255, .17); border-radius: 17px;
   background: rgba(15, 13, 33, .73); box-shadow: 0 10px 34px rgba(0,0,0,.2); backdrop-filter: blur(18px);
 }
+.app-header.quiz-route-header { position: relative; top: auto; }
 .brand-link { color: #fff; }
 .brand-mark { border: 1px solid rgba(255,255,255,.24); box-shadow: 0 0 20px rgba(153,127,255,.4); }
 .auth-icon-btn, .backbar {

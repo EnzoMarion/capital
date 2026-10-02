@@ -296,7 +296,29 @@ export default function Quiz() {
                         return alpha2 && alpha2 !== "??";
                     });
                 }
-                filtered = shuffle(filtered);
+                // Keep the random question order stable if the quiz data is reloaded
+                // while this navigation entry is still active (for example after
+                // the app is restored from the background).
+                const orderKey = `atlas.quiz.order:${location.key}:${location.search}`;
+                let orderedCountries: Country[] | null = null;
+                try {
+                    const savedCodes = JSON.parse(sessionStorage.getItem(orderKey) ?? "null") as string[] | null;
+                    const countriesByCode = new Map(filtered.map(country => [String(country.code).trim().padStart(3, "0"), country]));
+                    if (Array.isArray(savedCodes) && savedCodes.length === filtered.length && savedCodes.every(code => countriesByCode.has(code))) {
+                        orderedCountries = savedCodes.map(code => countriesByCode.get(code)!);
+                    }
+                } catch {
+                    // Storage can be unavailable in private browsing; use this load's order.
+                }
+                if (!orderedCountries) {
+                    orderedCountries = shuffle(filtered);
+                    try {
+                        sessionStorage.setItem(orderKey, JSON.stringify(orderedCountries.map(country => String(country.code).trim().padStart(3, "0"))));
+                    } catch {
+                        // The quiz remains playable even when session storage is unavailable.
+                    }
+                }
+                filtered = orderedCountries;
                 if (numQuestions !== 99999 && numQuestions < filtered.length) {
                     filtered = filtered.slice(0, numQuestions);
                 }
@@ -307,7 +329,7 @@ export default function Quiz() {
                 if (active) { setCountries([]); setCountriesLoading(false); setLoadError("Impossible de charger les pays. Vérifie ta connexion et réessaie."); }
             });
         return () => { active = false; };
-    }, [selectedContinents, showTerritories, onlyTerritories, euMode, flagsMode, numQuestions, quizLoaded, customQuestions]);
+    }, [selectedContinents, showTerritories, onlyTerritories, euMode, flagsMode, numQuestions, quizLoaded, customQuestions, location.key, location.search]);
 
     // Gestion MCQ pour mode classique
     useEffect(() => {

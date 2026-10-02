@@ -43,8 +43,9 @@ function QuizRoute() {
 function AppHeader() {
     const location = useLocation();
     const { user } = useAuth();
+    const isQuizRoute = location.pathname === "/quiz" || location.pathname.startsWith("/quiz-");
     return (
-        <header className="app-header">
+        <header className={`app-header${isQuizRoute ? " quiz-route-header" : ""}`}>
             <Link to="/" className="brand-link" aria-label="Atlas, accueil" onClick={event => {
                 if (location.pathname !== "/" || location.hash) return;
                 event.preventDefault();
