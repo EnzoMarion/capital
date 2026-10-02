@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { geoContains, geoDistance, geoOrthographic, geoPath, geoCentroid, type GeoPermissibleObjects } from "d3-geo";
 import { ComposableMap, Geographies, Geography } from "react-simple-maps";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
@@ -105,12 +105,10 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
             canvas.width = pixelWidth;
             canvas.height = pixelHeight;
         }
-        const context = canvas.getContext("2d", { alpha: false });
+        const context = canvas.getContext("2d", { alpha: true });
         if (!context) return;
         context.setTransform(dpr, 0, 0, dpr, 0, 0);
         context.clearRect(0, 0, bounds.width, bounds.height);
-        context.fillStyle = "#0b1121";
-        context.fillRect(0, 0, bounds.width, bounds.height);
         const cx = bounds.width / 2;
         const cy = bounds.height / 2;
         const radius = size * .49;
@@ -425,7 +423,7 @@ export function CarteMonde({ codeISO, region = "world", selectedCode, answerCode
         </div>;
     }
 
-    return <div ref={frameRef} className={`carte-fullscreen-stack atlas-globe-frame${onSelect ? " world-map-interactive" : ""}${large ? " atlas-globe-large" : ""}`} style={{ "--globe-zoom": zoom } as CSSProperties}>
+    return <div ref={frameRef} className={`carte-fullscreen-stack atlas-globe-frame${onSelect ? " world-map-interactive" : ""}${large ? " atlas-globe-large" : ""}`}>
         <canvas
             ref={canvasRef}
             className="carte-map atlas-globe"

@@ -1,4 +1,5 @@
-const CACHE_NAME = "atlas-shell-v1";
+const CACHE_NAME = "atlas-shell-v2";
+const SHELL_INDEX = new URL("./index.html", self.registration.scope).href;
 const APP_SHELL = [
     "./",
     "./index.html",
@@ -29,29 +30,32 @@ self.addEventListener("fetch", event => {
     const request = event.request;
     const url = new URL(request.url);
     if (request.method !== "GET" || url.origin !== self.location.origin) return;
+    // Never persist authenticated or user-specific responses in the offline cache.
+    if (url.pathname.startsWith("/api/") || request.headers.has("authorization")) return;
 
     if (request.mode === "navigate") {
         event.respondWith(
             fetch(request)
                 .then(response => {
-                    if (response.ok) {
+                    if (response.ok && response.headers.get("Cache-Control")?.includes("no-store") !== true) {
                         const copy = response.clone();
-                        void caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+                        void caches.open(CACHE_NAME).then(cache => cache.put(SHELL_INDEX, copy));
                     }
                     return response;
                 })
-                .catch(async () => (await caches.match(request)) || (await caches.match("./index.html"))),
+                .catch(async () => (await caches.match(SHELL_INDEX))),
         );
         return;
     }
 
-    if (url.pathname.includes("/rest/") || url.pathname.includes("/auth/")) return;
+    // Cache only app assets; skip APIs and dynamic content even if same-origin.
+    if (!/\.(?:css|js|mjs|svg|png|jpe?g|webp|ico|woff2?|ttf|webmanifest|geojson)$/i.test(url.pathname)) return;
 
     event.respondWith(
         caches.match(request).then(cached => {
             const update = fetch(request)
                 .then(response => {
-                    if (response.ok) {
+                    if (response.ok && response.headers.get("Cache-Control")?.includes("no-store") !== true) {
                         const copy = response.clone();
                         void caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
                     }

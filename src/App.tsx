@@ -2,25 +2,25 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-r
 import { lazy, Suspense, useEffect } from "react";
 import type { ReactNode } from "react";
 import Home from "./pages/Home";
-import QuizTypeSelect from "./pages/QuizTypeSelect";
-import SelectMode from "./pages/SelectMode";
-import Quiz from "./pages/Quiz";
 import { AuthProvider } from "./context/AuthContext";
 import AuthStatusIcon from "./components/AuthStatusIcon";
 import BackButton from "./components/BackButton";
-import Login from "./pages/Login";
-import QuizEuType from "./pages/QuizEuType";
-import QuizFlagsType from "./pages/QuizFlagsType";
-import CreateQuiz from "./pages/CreateQuiz";
-import EditQuiz from "./pages/EditQuiz";
-import RevisionList from "./pages/RevisionList";
-import QuizFranceDepts from "./pages/QuizFranceDepts";
-import QuizFranceRegions from "./pages/QuizFranceRegions";
-import FranceQuizType from "./pages/FranceQuizType";
-import QuizSwissCantons from "./pages/QuizSwissCantons";
 import { useAuth } from "./context/useAuth";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-
+const QuizTypeSelect = lazy(() => import("./pages/QuizTypeSelect"));
+const SelectMode = lazy(() => import("./pages/SelectMode"));
+const Quiz = lazy(() => import("./pages/Quiz"));
+const Login = lazy(() => import("./pages/Login"));
+const QuizEuType = lazy(() => import("./pages/QuizEuType"));
+const QuizFlagsType = lazy(() => import("./pages/QuizFlagsType"));
+const CreateQuiz = lazy(() => import("./pages/CreateQuiz"));
+const EditQuiz = lazy(() => import("./pages/EditQuiz"));
+const RevisionList = lazy(() => import("./pages/RevisionList"));
+const QuizFranceDepts = lazy(() => import("./pages/QuizFranceDepts"));
+const QuizFranceRegions = lazy(() => import("./pages/QuizFranceRegions"));
+const FranceQuizType = lazy(() => import("./pages/FranceQuizType"));
+const QuizSwissCantons = lazy(() => import("./pages/QuizSwissCantons"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const LegalNotice = lazy(() => import("./pages/LegalNotice"));
 const QuizFrancePhysical = lazy(() => import("./pages/QuizFrancePhysical"));
 const RevisionFrance = lazy(() => import("./pages/RevisionFrance"));
 const QuizUSStates = lazy(() => import("./pages/QuizUSStates"));
@@ -78,6 +78,61 @@ function NotFound() {
     return <main className="empty-state not-found"><p className="section-kicker">404</p><h1>Cette page n’existe pas</h1><button className="primary-btn" onClick={() => navigate("/")}>Retour à l’accueil</button></main>;
 }
 
+const PAGE_METADATA: Record<string, { title: string; description: string }> = {
+    "/": { title: "Atlas — Quiz de géographie gratuit en français", description: "Apprends et révise les capitales, pays, drapeaux, départements et régions avec les quiz gratuits Atlas." },
+    "/quiz-type": { title: "Quiz de géographie — Atlas", description: "Choisis un quiz de géographie du monde, de France, de Suisse ou des États-Unis." },
+    "/modes": { title: "Modes de quiz de géographie — Atlas", description: "Entraîne-toi en QCM, en saisie libre ou avec une carte muette interactive." },
+    "/quiz-france-type": { title: "Quiz de géographie française — Atlas", description: "Révise les départements, les régions, les montagnes et les fleuves de France." },
+    "/quiz-france-depts": { title: "Quiz des départements français — Atlas", description: "Retrouve les départements français et leurs chefs-lieux grâce à des quiz et une carte muette." },
+    "/quiz-france-regions": { title: "Quiz des régions françaises — Atlas", description: "Apprends à reconnaître les régions françaises et leurs préfectures." },
+    "/quiz-france-physical": { title: "Relief et cours d’eau de France — Atlas", description: "Révise les grands repères physiques de la France avec des quiz de géographie." },
+    "/quiz-swiss-cantons": { title: "Quiz des cantons suisses — Atlas", description: "Apprends les 26 cantons suisses, leurs chefs-lieux et leurs drapeaux." },
+    "/quiz-us-states": { title: "Quiz des États des États-Unis — Atlas", description: "Révise les 50 États américains, leurs capitales et leurs drapeaux." },
+    "/quiz-eu-type": { title: "Quiz sur l’Union européenne — Atlas", description: "Teste tes connaissances sur les pays et les capitales de l’Union européenne." },
+    "/quiz-flags-type": { title: "Quiz des drapeaux du monde — Atlas", description: "Apprends à reconnaître les drapeaux des pays du monde." },
+    "/revision": { title: "Fiches de géographie — Atlas", description: "Retrouve les fiches de révision des pays et des capitales." },
+    "/revision-france": { title: "Révisions de géographie française — Atlas", description: "Révise les départements, régions et repères physiques de la France." },
+    "/revision-switzerland": { title: "Révisions des cantons suisses — Atlas", description: "Retrouve les fiches de révision des cantons suisses et de leurs chefs-lieux." },
+    "/revision-usa": { title: "Révisions des États américains — Atlas", description: "Retrouve les fiches de révision des États et capitales des États-Unis." },
+    "/confidentialite": { title: "Confidentialité et données personnelles — Atlas", description: "Découvre quelles données Atlas utilise, pourquoi, combien de temps et comment exercer tes droits." },
+    "/mentions-legales": { title: "Mentions légales — Atlas", description: "Éditeur, publication et hébergement du site Atlas." },
+};
+
+function setMeta(attribute: "name" | "property", key: string, content: string) {
+    let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
+    if (!element) {
+        element = document.createElement("meta");
+        element.setAttribute(attribute, key);
+        document.head.appendChild(element);
+    }
+    element.content = content;
+}
+
+function RouteMetadata() {
+    const location = useLocation();
+    useEffect(() => {
+        const meta = PAGE_METADATA[location.pathname] ?? { title: "Atlas — Quiz de géographie", description: "Des quiz gratuits pour apprendre la géographie du monde et de la France." };
+        const privateRoute = ["/login", "/create-quiz", "/edit-quiz/", "/my-quizzes", "/quiz", "/404"].some(path => location.pathname === path || (path.endsWith("/") && location.pathname.startsWith(path)));
+        const canonical = `https://capital-black.vercel.app${location.pathname === "/" ? "/" : location.pathname}`;
+        document.title = meta.title;
+        setMeta("name", "description", meta.description);
+        setMeta("name", "robots", privateRoute ? "noindex,follow" : "index,follow");
+        setMeta("property", "og:title", meta.title);
+        setMeta("property", "og:description", meta.description);
+        setMeta("property", "og:url", canonical);
+        setMeta("name", "twitter:title", meta.title);
+        setMeta("name", "twitter:description", meta.description);
+        let canonicalLink = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+        if (!canonicalLink) {
+            canonicalLink = document.createElement("link");
+            canonicalLink.rel = "canonical";
+            document.head.appendChild(canonicalLink);
+        }
+        canonicalLink.href = canonical;
+    }, [location.pathname]);
+    return null;
+}
+
 function ScrollMotion() {
     const location = useLocation();
 
@@ -120,7 +175,9 @@ function App() {
     return (
         <AuthProvider>
             <ScrollMotion />
+            <RouteMetadata />
             <AppHeader />
+            <Suspense fallback={<p className="loading-state" role="status">Chargement d’Atlas…</p>}>
             <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/quiz-type" element={<QuizTypeSelect />} />
@@ -128,25 +185,27 @@ function App() {
                 <Route path="/quiz" element={<QuizRoute />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/confidentialite" element={<PrivacyPolicy />} />
+                <Route path="/mentions-legales" element={<LegalNotice />} />
                 <Route path="/quiz-eu-type" element={<QuizEuType />} />
                 <Route path="/quiz-flags-type" element={<QuizFlagsType />} />
                 <Route path="/create-quiz" element={<AuthRequired><CreateQuiz /></AuthRequired>} />
                 <Route path="/my-quizzes" element={<AuthRequired><Navigate to="/#mes-quiz" replace /></AuthRequired>} />
                 <Route path="/edit-quiz/:id" element={<AuthRequired><EditQuiz /></AuthRequired>} />
                 <Route path="/revision" element={<RevisionList />} />
-                <Route path="/revision-france" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionFrance /></Suspense>} />
-                <Route path="/revision-switzerland" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionRegional region="switzerland" /></Suspense>} />
-                <Route path="/revision-usa" element={<Suspense fallback={<p className="loading-state">Chargement des fiches…</p>}><RevisionRegional region="usa" /></Suspense>} />
+                <Route path="/revision-france" element={<RevisionFrance />} />
+                <Route path="/revision-switzerland" element={<RevisionRegional region="switzerland" />} />
+                <Route path="/revision-usa" element={<RevisionRegional region="usa" />} />
                 <Route path="/quiz-france-type" element={<FranceQuizType />} />
                 <Route path="/quiz-france-depts" element={<QuizFranceDepts />} />
                 <Route path="/quiz-france-regions" element={<QuizFranceRegions />} />
-                <Route path="/quiz-france-physical" element={<Suspense fallback={<p className="loading-state">Chargement du quiz…</p>}><QuizFrancePhysical /></Suspense>} />
+                <Route path="/quiz-france-physical" element={<QuizFrancePhysical />} />
                 <Route path="/quiz-swiss-cantons" element={<QuizSwissCantons />} />
-                <Route path="/quiz-us-states" element={<Suspense fallback={<p className="loading-state">Chargement du quiz…</p>}><QuizUSStates /></Suspense>} />
+                <Route path="/quiz-us-states" element={<QuizUSStates />} />
                 <Route path="/404" element={<NotFound />} />
                 <Route path="*" element={<Navigate to="/404" replace />} />
             </Routes>
-            <footer className="site-privacy-footer"><Link to="/confidentialite">Confidentialité et données personnelles</Link></footer>
+            </Suspense>
+            <footer className="site-privacy-footer"><Link to="/confidentialite">Confidentialité</Link><span aria-hidden="true">·</span><Link to="/mentions-legales">Mentions légales</Link></footer>
         </AuthProvider>
     );
 }

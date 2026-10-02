@@ -1,6 +1,7 @@
 -- Avoid exposing student ranking or cohort sizes for groups smaller than six.
 -- Personal quiz records are private to their owner and are never compared across users.
-create or replace function public.get_my_quiz_stats()
+drop function if exists public.get_my_quiz_stats();
+create function public.get_my_quiz_stats()
 returns table (
     quiz_key text,
     scope_key text,
@@ -75,7 +76,7 @@ as $$
      and comparison.scope_key = mine.scope_key;
 $$;
 
-revoke all on function public.get_my_quiz_stats() from public;
+revoke all on function public.get_my_quiz_stats() from public, anon, authenticated;
 grant execute on function public.get_my_quiz_stats() to authenticated;
 
 notify pgrst, 'reload schema';
